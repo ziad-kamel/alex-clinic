@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 
@@ -50,6 +50,9 @@ export default function FrontDeskPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
+  // AbortController ref to cancel previous in-flight search requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // New Patient Form State
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [patientName, setPatientName] = useState('');
@@ -93,7 +96,6 @@ export default function FrontDeskPage() {
       .catch(() => {});
 
     loadTodayAppointments();
-    loadPatients(1);
   }, []);
 
   const loadTodayAppointments = (docId?: string) => {
@@ -105,18 +107,26 @@ export default function FrontDeskPage() {
       .catch(() => {});
   };
 
-  // Search & Paginate Patients
-  const loadPatients = async (page = 1) => {
+  // Search & Paginate Patients with AbortController
+  const fetchPatients = useCallback(async (nameVal: string, phoneVal: string, page = 1) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsSearching(true);
     try {
       const params = new URLSearchParams({
         page: String(page),
         limit: '6',
       });
-      if (searchName.trim()) params.append('name', searchName.trim());
-      if (searchPhone.trim()) params.append('phone', searchPhone.trim());
+      if (nameVal.trim()) params.append('name', nameVal.trim());
+      if (phoneVal.trim()) params.append('phone', phoneVal.trim());
 
-      const res = await fetch(`/api/patients?${params.toString()}`);
+      const res = await fetch(`/api/patients?${params.toString()}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data = await res.json();
         setPatients(data.items || []);
@@ -124,19 +134,31 @@ export default function FrontDeskPage() {
         setTotalPages(data.totalPages || 1);
         setTotalRecords(data.total || 0);
       }
-    } catch {}
-    setIsSearching(false);
-  };
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        // Ignored aborted fetches
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    loadPatients(1);
+  // 300ms Debounce effect for Patient Search as you type
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPatients(searchName, searchPhone, 1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchName, searchPhone, fetchPatients]);
+
+  const handlePageChange = (newPage: number) => {
+    fetchPatients(searchName, searchPhone, newPage);
   };
 
   const handleClearSearch = () => {
     setSearchName('');
     setSearchPhone('');
-    loadPatients(1);
   };
 
   // Register Patient
@@ -165,7 +187,7 @@ export default function FrontDeskPage() {
       setPatientName('');
       setPatientPhone('');
       setPatientExtraPhone('');
-      loadPatients(1);
+      fetchPatients('', '', 1);
     } catch {
       setBookingError('Error creating patient');
     }
@@ -260,9 +282,16 @@ export default function FrontDeskPage() {
         <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">
-                {t('searchPatientTitle')}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800">
+                  {t('searchPatientTitle')}
+                </h2>
+                {isSearching && (
+                  <span className="text-xs text-teal-600 animate-pulse font-medium">
+                    ({tCommon('loading')})
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => {
                   setShowNewPatient(!showNewPatient);
@@ -276,8 +305,8 @@ export default function FrontDeskPage() {
 
             {!showNewPatient ? (
               <div>
-                {/* Specific Filters for Name and Phone */}
-                <form onSubmit={handleSearchSubmit} className="space-y-2 mb-4">
+                {/* As-you-type Debounced Filters */}
+                <div className="space-y-2 mb-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
@@ -295,25 +324,18 @@ export default function FrontDeskPage() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={isSearching}
-                      className="flex-1 py-1.5 bg-slate-800 text-white rounded-md text-xs font-semibold hover:bg-slate-700 transition"
-                    >
-                      {isSearching ? tCommon('loading') : tCommon('search')}
-                    </button>
-                    {(searchName || searchPhone) && (
+                  {(searchName || searchPhone) && (
+                    <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={handleClearSearch}
-                        className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md text-xs hover:bg-slate-200"
+                        className="px-3 py-1 bg-slate-100 text-slate-600 rounded-md text-xs hover:bg-slate-200 font-medium"
                       >
-                        {tCommon('clear')}
+                        ✕ {tCommon('clear')}
                       </button>
-                    )}
-                  </div>
-                </form>
+                    </div>
+                  )}
+                </div>
 
                 {/* Patient List */}
                 <div className="min-h-[220px] divide-y divide-slate-100 border border-slate-200 rounded-md">
@@ -354,7 +376,7 @@ export default function FrontDeskPage() {
                   </span>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => loadPatients(currentPage - 1)}
+                      onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage <= 1 || isSearching}
                       className="px-2.5 py-1 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40"
                     >
@@ -364,7 +386,7 @@ export default function FrontDeskPage() {
                       {tCommon('page')} {currentPage} {tCommon('of')} {totalPages}
                     </span>
                     <button
-                      onClick={() => loadPatients(currentPage + 1)}
+                      onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage >= totalPages || isSearching}
                       className="px-2.5 py-1 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40"
                     >
