@@ -59,19 +59,22 @@ export default async function DashboardPage() {
           </Link>
 
           {/* Laboratory Card */}
-          <div className="p-6 border border-slate-200 rounded-lg bg-slate-50 opacity-60">
+          <Link
+            href="/dashboard/lab"
+            className="group block p-6 border-2 border-slate-200 hover:border-teal-500 rounded-lg bg-slate-50 hover:bg-teal-50 transition-all"
+          >
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-lg text-slate-800">
+              <h3 className="font-bold text-lg text-slate-900 group-hover:text-teal-700">
                 {t('laboratory')}
               </h3>
-              <span className="text-xs px-2 py-0.5 bg-slate-200 text-slate-700 rounded">
-                Phase 2
+              <span className="text-xs px-2 py-0.5 bg-teal-600 text-white font-bold rounded">
+                Active (Phase 2)
               </span>
             </div>
-            <p className="text-sm text-slate-500">
-              Lab catalog, orders, and patient portal account generation.
+            <p className="text-sm text-slate-600">
+              Lab orders, test results entry, verification, and diagnostic reports.
             </p>
-          </div>
+          </Link>
 
           {/* Doctor Queue Card */}
           <div className="p-6 border border-slate-200 rounded-lg bg-slate-50 opacity-60">
