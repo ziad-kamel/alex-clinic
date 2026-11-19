@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { PrintButton } from '@/components/PrintButton';
 
 interface ReceiptData {
@@ -18,7 +19,13 @@ interface ReceiptData {
 
 async function getReceipt(id: string): Promise<ReceiptData | null> {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('staff_token')?.value;
+
     const res = await fetch(`http://localhost:3001/api/appointments/${id}/receipt`, {
+      headers: {
+        ...(token ? { Cookie: `staff_token=${token}` } : {}),
+      },
       cache: 'no-store',
     });
     if (!res.ok) return null;

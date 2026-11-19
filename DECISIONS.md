@@ -32,3 +32,14 @@
   1. Direct client-side WebUSB/ESC-POS socket library: postponed as printer hardware is unknown at this phase.
   2. Canvas/PDF-based thermal generation: unnecessary overhead for modern thermal print spoolers.
 - **Consequences:** Prints cleanly on thermal 80mm paper rolls as well as previewing crisply in any standard browser.
+
+## DECISION-004: Patient Search Debouncing (300ms) with AbortController and Server-Side Pagination
+
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:** Front desk search needed instant search-as-you-type for patient names and phones without overloading the database with a query on every raw keystroke as the patient database scales.
+- **Decision:** Implemented a 300ms debounce timer in the React client coupled with `AbortController` cancellation for in-flight requests, and server-side pagination (`skip`, `take`, `count`) in the NestJS API. Added separate filters for name and phone and doctor specialization/name multi-filtering.
+- **Alternatives Considered:**
+  1. Instant querying on every keydown: rejected due to DB connection pressure and server overhead.
+  2. Client-side full table filtering: rejected because loading all patients into memory is unscalable for a production clinic.
+- **Consequences:** Real-time search experience with minimal database queries and zero stale-response race conditions.
