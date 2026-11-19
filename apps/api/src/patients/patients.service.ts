@@ -7,50 +7,56 @@ import { normalizeArabicText } from '@clinic/shared';
 export class PatientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async search(query?: string) {
-    if (!query || query.trim().length === 0) {
-      return this.prisma.patient.findMany({
-        take: 50,
-        orderBy: { createdAt: 'desc' },
-      });
+  async search(query?: string, name?: string, phone?: string, page = 1, limit = 10) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const take = Math.min(50, Math.max(1, Number(limit) || 10));
+    const skip = (pageNum - 1) * take;
+
+    const whereClause: any = {};
+
+    // Specific filters if supplied
+    if (phone && phone.trim()) {
+      whereClause.OR = [
+        { phone: { contains: phone.trim() } },
+        { extraPhone: { contains: phone.trim() } },
+      ];
     }
 
-    const cleanQuery = query.trim();
-    const normalized = normalizeArabicText(cleanQuery);
-
-    // Patients can be searched by phone or name
-    // We fetch matching records and also match normalized variants
-    const matches = await this.prisma.patient.findMany({
-      where: {
-        OR: [
-          { phone: { contains: cleanQuery } },
-          { extraPhone: { contains: cleanQuery } },
-          { name: { contains: cleanQuery, mode: 'insensitive' } },
-        ],
-      },
-      take: 50,
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Also check normalized Arabic matches if the direct query returned fewer results
-    if (matches.length < 50) {
-      const allRecent = await this.prisma.patient.findMany({
-        take: 200,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      const existingIds = new Set(matches.map((m) => m.id));
-      for (const p of allRecent) {
-        if (!existingIds.has(p.id)) {
-          const normPatientName = normalizeArabicText(p.name);
-          if (normPatientName.includes(normalized)) {
-            matches.push(p);
-          }
-        }
-      }
+    if (name && name.trim()) {
+      whereClause.name = { contains: name.trim(), mode: 'insensitive' };
     }
 
-    return matches;
+    // General query (matches phone OR name)
+    if (query && query.trim()) {
+      const cleanQuery = query.trim();
+      const normalized = normalizeArabicText(cleanQuery);
+
+      whereClause.OR = [
+        { phone: { contains: cleanQuery } },
+        { extraPhone: { contains: cleanQuery } },
+        { name: { contains: cleanQuery, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.patient.findMany({
+        where: whereClause,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.patient.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+      page: pageNum,
+      limit: take,
+      totalPages: Math.ceil(total / take),
+    };
   }
 
   async findOne(id: string) {

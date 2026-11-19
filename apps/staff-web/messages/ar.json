@@ -9,6 +9,7 @@
     "save": "حفظ",
     "cancel": "إلغاء",
     "search": "بحث",
+    "clear": "مسح",
     "language": "اللغة",
     "arabic": "العربية",
     "english": "English",
@@ -17,7 +18,12 @@
     "status": "الحالة",
     "actions": "الإجراءات",
     "all": "الكل",
-    "today": "اليوم"
+    "today": "اليوم",
+    "page": "صفحة",
+    "of": "من",
+    "previous": "السابق",
+    "next": "التالي",
+    "total": "إجمالي النتائج"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -40,6 +46,11 @@
     "registerPatientTitle": "تسجيل مريض جديد",
     "searchPatientTitle": "البحث عن مريض",
     "searchPlaceholder": "ابحث بالاسم أو رقم الهاتف...",
+    "filterByName": "تصفية بالاسم",
+    "filterByPhone": "تصفية برقم الهاتف",
+    "filterBySpecialization": "تصفية حسب التخصص",
+    "filterDoctorName": "ابحث عن اسم الطبيب...",
+    "allSpecializations": "جميع التخصصات",
     "fullName": "الاسم بالكامل",
     "phone": "رقم الهاتف",
     "extraPhone": "رقم هاتف إضافي (اختياري)",
@@ -58,7 +69,8 @@
     "cancelConfirm": "هل أنت متأكد من إلغاء هذا الحجز؟ (لن تتغير أرقام أدوار المرضى الآخرين)",
     "cancelSuccess": "تم إلغاء الحجز.",
     "noAppointments": "لا توجد حجوزات مسجلة لليوم.",
-    "noPatientsFound": "لم يتم العثور على مرضى مطابقين للبحث."
+    "noPatientsFound": "لم يتم العثور على مرضى مطابقين للبحث.",
+    "noDoctorsFound": "لا يوجد أطباء مطابقين للبحث."
   },
   "receipt": {
     "appointmentReceipt": "إيصال حجز كشف",

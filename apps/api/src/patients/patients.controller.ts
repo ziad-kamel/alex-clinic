@@ -7,7 +7,7 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { Roles } from '../auth/roles.decorator';
@@ -20,9 +20,21 @@ export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Search patients by phone or name (Arabic letter normalized)' })
-  search(@Query('query') query?: string) {
-    return this.patientsService.search(query);
+  @ApiOperation({ summary: 'Search and paginate patients by query, name, and/or phone' })
+  search(
+    @Query('query') query?: string,
+    @Query('name') name?: string,
+    @Query('phone') phone?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.patientsService.search(
+      query,
+      name,
+      phone,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 10,
+    );
   }
 
   @Get(':id')

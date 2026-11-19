@@ -4,11 +4,18 @@ import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 
+interface Specialization {
+  id: string;
+  name: string;
+  nameAr?: string;
+}
+
 interface Doctor {
   id: string;
   name: string;
   nameAr?: string;
-  specialization: { name: string; nameAr?: string };
+  specializationId: string;
+  specialization: { id: string; name: string; nameAr?: string };
   schedules: { weekday: number; startTime: string; endTime: string; maxPatients?: number }[];
 }
 
@@ -33,10 +40,15 @@ export default function FrontDeskPage() {
   const tCommon = useTranslations('common');
   const locale = useLocale();
 
-  // Search & Register State
-  const [searchQuery, setSearchQuery] = useState('');
+  // Patients Search & Filter State
+  const [searchName, setSearchName] = useState('');
+  const [searchPhone, setSearchPhone] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // New Patient Form State
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -44,9 +56,14 @@ export default function FrontDeskPage() {
   const [patientPhone, setPatientPhone] = useState('');
   const [patientExtraPhone, setPatientExtraPhone] = useState('');
 
-  // Booking State
+  // Doctor & Specialization Filters
+  const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [selectedSpecFilter, setSelectedSpecFilter] = useState('');
+  const [doctorNameQuery, setDoctorNameQuery] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
+
+  // Booking State
   const [appointmentDate, setAppointmentDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
@@ -58,8 +75,9 @@ export default function FrontDeskPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctorFilter, setDoctorFilter] = useState('');
 
-  // Fetch doctors and today's appointments on load
+  // Fetch initial metadata
   useEffect(() => {
+    // Doctors
     fetch('/api/doctors')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
@@ -68,7 +86,14 @@ export default function FrontDeskPage() {
       })
       .catch(() => {});
 
+    // Specializations
+    fetch('/api/specializations')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setSpecializations(data))
+      .catch(() => {});
+
     loadTodayAppointments();
+    loadPatients(1);
   }, []);
 
   const loadTodayAppointments = (docId?: string) => {
@@ -80,19 +105,41 @@ export default function FrontDeskPage() {
       .catch(() => {});
   };
 
-  // Search patients
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Search & Paginate Patients
+  const loadPatients = async (page = 1) => {
+    setIsSearching(true);
     try {
-      const res = await fetch(`/api/patients?query=${encodeURIComponent(searchQuery)}`);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '6',
+      });
+      if (searchName.trim()) params.append('name', searchName.trim());
+      if (searchPhone.trim()) params.append('phone', searchPhone.trim());
+
+      const res = await fetch(`/api/patients?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setPatients(data);
+        setPatients(data.items || []);
+        setCurrentPage(data.page || 1);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.total || 0);
       }
     } catch {}
+    setIsSearching(false);
   };
 
-  // Register patient
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadPatients(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchName('');
+    setSearchPhone('');
+    loadPatients(1);
+  };
+
+  // Register Patient
   const handleRegisterPatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setBookingError('');
@@ -118,16 +165,36 @@ export default function FrontDeskPage() {
       setPatientName('');
       setPatientPhone('');
       setPatientExtraPhone('');
+      loadPatients(1);
     } catch {
       setBookingError('Error creating patient');
     }
   };
+
+  // Filtered Doctors list based on specialization and name search
+  const filteredDoctors = doctors.filter((doc) => {
+    const matchesSpec = !selectedSpecFilter || doc.specializationId === selectedSpecFilter;
+    const docName = (doc.name + ' ' + (doc.nameAr || '')).toLowerCase();
+    const matchesName = !doctorNameQuery.trim() || docName.includes(doctorNameQuery.toLowerCase().trim());
+    return matchesSpec && matchesName;
+  });
+
+  // Keep selected doctor in sync with filter
+  useEffect(() => {
+    if (filteredDoctors.length > 0 && !filteredDoctors.some((d) => d.id === selectedDoctorId)) {
+      setSelectedDoctorId(filteredDoctors[0].id);
+    }
+  }, [filteredDoctors, selectedDoctorId]);
 
   // Book appointment
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatient) {
       setBookingError('Please select or register a patient first');
+      return;
+    }
+    if (!selectedDoctorId) {
+      setBookingError('Please select an active doctor');
       return;
     }
 
@@ -183,123 +250,179 @@ export default function FrontDeskPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Patient registration, appointment booking, and 80mm receipts
+          Patient search & pagination, doctor multi-filters, appointment booking, and 80mm receipts
         </p>
       </div>
 
       {/* Grid: Patient Selection & Booking Form */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column: Patient Search & Register */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800">
-              {t('searchPatientTitle')}
-            </h2>
-            <button
-              onClick={() => {
-                setShowNewPatient(!showNewPatient);
-                setSelectedPatient(null);
-              }}
-              className="text-xs px-3 py-1.5 font-medium rounded-md bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100"
-            >
-              {showNewPatient ? tCommon('search') : `+ ${t('registerPatientTitle')}`}
-            </button>
-          </div>
+        {/* Left Column: Patient Search, Filters & Pagination */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-slate-800">
+                {t('searchPatientTitle')}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowNewPatient(!showNewPatient);
+                  setSelectedPatient(null);
+                }}
+                className="text-xs px-3 py-1.5 font-medium rounded-md bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100"
+              >
+                {showNewPatient ? tCommon('search') : `+ ${t('registerPatientTitle')}`}
+              </button>
+            </div>
 
-          {!showNewPatient ? (
-            <div>
-              <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('searchPlaceholder')}
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                />
+            {!showNewPatient ? (
+              <div>
+                {/* Specific Filters for Name and Phone */}
+                <form onSubmit={handleSearchSubmit} className="space-y-2 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                      placeholder={t('filterByName')}
+                      className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                    />
+                    <input
+                      type="text"
+                      value={searchPhone}
+                      onChange={(e) => setSearchPhone(e.target.value)}
+                      placeholder={t('filterByPhone')}
+                      className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={isSearching}
+                      className="flex-1 py-1.5 bg-slate-800 text-white rounded-md text-xs font-semibold hover:bg-slate-700 transition"
+                    >
+                      {isSearching ? tCommon('loading') : tCommon('search')}
+                    </button>
+                    {(searchName || searchPhone) && (
+                      <button
+                        type="button"
+                        onClick={handleClearSearch}
+                        className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md text-xs hover:bg-slate-200"
+                      >
+                        {tCommon('clear')}
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* Patient List */}
+                <div className="min-h-[220px] divide-y divide-slate-100 border border-slate-200 rounded-md">
+                  {patients.length === 0 ? (
+                    <p className="p-8 text-xs text-slate-500 text-center">
+                      {t('noPatientsFound')}
+                    </p>
+                  ) : (
+                    patients.map((p) => (
+                      <div
+                        key={p.id}
+                        onClick={() => setSelectedPatient(p)}
+                        className={`p-3 cursor-pointer text-sm flex justify-between items-center hover:bg-teal-50 transition-colors ${
+                          selectedPatient?.id === p.id ? 'bg-teal-100 font-semibold text-teal-900' : ''
+                        }`}
+                      >
+                        <div>
+                          <div className="font-medium text-slate-900">{p.name}</div>
+                          <div className="text-xs text-slate-500 flex gap-2">
+                            <span>📞 {p.phone}</span>
+                            {p.extraPhone && <span>| {p.extraPhone}</span>}
+                          </div>
+                        </div>
+                        {selectedPatient?.id === p.id && (
+                          <span className="text-xs text-teal-700 font-bold bg-white px-2 py-0.5 rounded shadow-xs">
+                            ✓ Selected
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    {tCommon('total')}: <strong>{totalRecords}</strong>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => loadPatients(currentPage - 1)}
+                      disabled={currentPage <= 1 || isSearching}
+                      className="px-2.5 py-1 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
+                      {tCommon('previous')}
+                    </button>
+                    <span>
+                      {tCommon('page')} {currentPage} {tCommon('of')} {totalPages}
+                    </span>
+                    <button
+                      onClick={() => loadPatients(currentPage + 1)}
+                      disabled={currentPage >= totalPages || isSearching}
+                      className="px-2.5 py-1 border border-slate-300 rounded bg-white hover:bg-slate-50 disabled:opacity-40"
+                    >
+                      {tCommon('next')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Register New Patient Form */
+              <form onSubmit={handleRegisterPatient} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('fullName')} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('phone')} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('extraPhone')}
+                  </label>
+                  <input
+                    type="text"
+                    value={patientExtraPhone}
+                    onChange={(e) => setPatientExtraPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-800 text-white rounded-md text-sm hover:bg-slate-700"
+                  className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700"
                 >
-                  {tCommon('search')}
+                  {t('registerBtn')}
                 </button>
               </form>
-
-              {/* Patient List */}
-              <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-md">
-                {patients.length === 0 ? (
-                  <p className="p-4 text-xs text-slate-500 text-center">
-                    {searchQuery ? t('noPatientsFound') : 'Search patients above to begin'}
-                  </p>
-                ) : (
-                  patients.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => setSelectedPatient(p)}
-                      className={`p-3 cursor-pointer text-sm flex justify-between items-center hover:bg-teal-50 transition-colors ${
-                        selectedPatient?.id === p.id ? 'bg-teal-100 font-semibold text-teal-900' : ''
-                      }`}
-                    >
-                      <div>
-                        <div>{p.name}</div>
-                        <div className="text-xs text-slate-500">{p.phone}</div>
-                      </div>
-                      {selectedPatient?.id === p.id && (
-                        <span className="text-xs text-teal-700 font-bold">✓ Selected</span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Register New Patient Form */
-            <form onSubmit={handleRegisterPatient} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  {t('fullName')} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  {t('phone')} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={patientPhone}
-                  onChange={(e) => setPatientPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  {t('extraPhone')}
-                </label>
-                <input
-                  type="text"
-                  value={patientExtraPhone}
-                  onChange={(e) => setPatientExtraPhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700"
-              >
-                {t('registerBtn')}
-              </button>
-            </form>
-          )}
+            )}
+          </div>
 
           {/* Selected Patient Banner */}
           {selectedPatient && (
@@ -310,7 +433,7 @@ export default function FrontDeskPage() {
               </div>
               <button
                 onClick={() => setSelectedPatient(null)}
-                className="text-xs text-slate-500 hover:text-red-600"
+                className="text-xs text-slate-500 hover:text-red-600 underline"
               >
                 Clear
               </button>
@@ -318,7 +441,7 @@ export default function FrontDeskPage() {
           )}
         </div>
 
-        {/* Right Column: Appointment Booking */}
+        {/* Right Column: Doctor Multi-Filters & Appointment Booking */}
         <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-800 mb-4">
             {t('bookAppointmentTitle')}
@@ -331,39 +454,89 @@ export default function FrontDeskPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('selectDoctor')} *
-              </label>
-              <select
-                value={selectedDoctorId}
-                onChange={(e) => setSelectedDoctorId(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
-              >
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {locale === 'ar' && d.nameAr ? d.nameAr : d.name} (
-                    {locale === 'ar' && d.specialization.nameAr
-                      ? d.specialization.nameAr
-                      : d.specialization.name}
-                    )
-                  </option>
-                ))}
-              </select>
+            {/* Doctor Filters: Specialization + Name search */}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Doctor Search & Filter / تصفية الأطباء
+              </span>
 
-              {/* Working days schedule hint */}
-              {selectedDoctor && (
-                <div className="mt-1 text-[11px] text-slate-500">
-                  {t('workingDays')}:{' '}
-                  {selectedDoctor.schedules.length === 0
-                    ? 'No schedule'
-                    : selectedDoctor.schedules
-                        .map((s) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.weekday])
-                        .join(', ')}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Specialization Filter */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    {t('filterBySpecialization')}
+                  </label>
+                  <select
+                    value={selectedSpecFilter}
+                    onChange={(e) => setSelectedSpecFilter(e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
+                  >
+                    <option value="">{t('allSpecializations')}</option>
+                    {specializations.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {locale === 'ar' && s.nameAr ? s.nameAr : s.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+
+                {/* Doctor Name Search */}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                    {t('filterByName')}
+                  </label>
+                  <input
+                    type="text"
+                    value={doctorNameQuery}
+                    onChange={(e) => setDoctorNameQuery(e.target.value)}
+                    placeholder={t('filterDoctorName')}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              {/* Doctor Dropdown Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-800 mb-1">
+                  {t('selectDoctor')} * ({filteredDoctors.length} found)
+                </label>
+                {filteredDoctors.length === 0 ? (
+                  <p className="text-xs text-red-600 italic py-1">
+                    {t('noDoctorsFound')}
+                  </p>
+                ) : (
+                  <select
+                    value={selectedDoctorId}
+                    onChange={(e) => setSelectedDoctorId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:outline-none focus:ring-teal-500"
+                  >
+                    {filteredDoctors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {locale === 'ar' && d.nameAr ? d.nameAr : d.name} (
+                        {locale === 'ar' && d.specialization.nameAr
+                          ? d.specialization.nameAr
+                          : d.specialization.name}
+                        )
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Working days schedule hint */}
+                {selectedDoctor && (
+                  <div className="mt-1 text-[11px] text-slate-600">
+                    <strong>{t('workingDays')}: </strong>
+                    {selectedDoctor.schedules.length === 0
+                      ? 'No schedule'
+                      : selectedDoctor.schedules
+                          .map((s) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.weekday])
+                          .join(', ')}
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Appointment Date */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 {t('selectDate')} *
@@ -379,7 +552,7 @@ export default function FrontDeskPage() {
 
             <button
               type="submit"
-              disabled={loading || !selectedPatient}
+              disabled={loading || !selectedPatient || filteredDoctors.length === 0}
               className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
             >
               {loading ? tCommon('loading') : t('bookBtn')}

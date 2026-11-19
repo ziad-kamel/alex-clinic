@@ -9,6 +9,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "search": "Search",
+    "clear": "Clear",
     "language": "Language",
     "arabic": "العربية",
     "english": "English",
@@ -17,7 +18,12 @@
     "status": "Status",
     "actions": "Actions",
     "all": "All",
-    "today": "Today"
+    "today": "Today",
+    "page": "Page",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next",
+    "total": "Total records"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -39,7 +45,12 @@
     "title": "Front Desk & Reception",
     "registerPatientTitle": "Register New Patient",
     "searchPatientTitle": "Patient Search & Lookup",
-    "searchPlaceholder": "Search by patient name or phone number...",
+    "searchPlaceholder": "Search name or phone...",
+    "filterByName": "Filter by Name",
+    "filterByPhone": "Filter by Phone",
+    "filterBySpecialization": "Specialization Filter",
+    "filterDoctorName": "Search Doctor Name...",
+    "allSpecializations": "All Specializations",
     "fullName": "Full Name",
     "phone": "Phone Number",
     "extraPhone": "Extra Phone (Optional)",
@@ -58,7 +69,8 @@
     "cancelConfirm": "Are you sure you want to cancel this appointment? (Renumbering will not occur)",
     "cancelSuccess": "Appointment cancelled.",
     "noAppointments": "No appointments booked for today.",
-    "noPatientsFound": "No patients found matching your search."
+    "noPatientsFound": "No patients found matching your search.",
+    "noDoctorsFound": "No doctors found matching filters."
   },
   "receipt": {
     "appointmentReceipt": "Appointment Receipt",
