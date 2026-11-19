@@ -1,0 +1,30 @@
+{
+  "common": {
+    "clinicName": "عيادة أليكس",
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "search": "بحث",
+    "language": "اللغة",
+    "arabic": "العربية",
+    "english": "English"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "frontDesk": "الاستقبال",
+    "doctorQueue": "طابور العيادة",
+    "laboratory": "المختبر والتحاليل",
+    "admin": "الإدارة"
+  },
+  "auth": {
+    "title": "دخول موظفي العيادة",
+    "subtitle": "أدخل بيانات حسابك للوصول إلى النظام",
+    "submit": "تسجيل الدخول",
+    "invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة",
+    "loggedInAs": "مسجل كـ"
+  }
+}

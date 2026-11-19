@@ -1,0 +1,220 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum StaffRole {
+  ADMIN
+  FRONT_DESK
+  DOCTOR
+  LAB
+}
+
+enum AppointmentStatus {
+  BOOKED
+  SEEN
+  CANCELLED
+  NO_SHOW
+}
+
+enum LabOrderStatus {
+  BOOKED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TestResultFlag {
+  NORMAL
+  HIGH
+  LOW
+}
+
+enum SyncType {
+  ACCOUNT_UPSERT
+  RESULT_UPSERT
+}
+
+enum SyncStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Patient {
+  id                 String               @id @default(uuid()) @db.Uuid
+  name               String
+  phone              String
+  extraPhone         String?              @map("extra_phone")
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  appointments       Appointment[]
+  labOrders          LabOrder[]
+  portalAccountLocal PortalAccountLocal?
+
+  @@index([phone])
+  @@index([name])
+  @@map("patients")
+}
+
+model Specialization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  nameAr    String?  @map("name_ar")
+  doctors   Doctor[]
+
+  @@map("specializations")
+}
+
+model Doctor {
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String
+  nameAr           String?           @map("name_ar")
+  specializationId String            @map("specialization_id") @db.Uuid
+  specialization   Specialization    @relation(fields: [specializationId], references: [id])
+  active           Boolean           @default(true)
+  schedules        DoctorSchedule[]
+  appointments     Appointment[]
+  dayCounters      DoctorDayCounter[]
+
+  @@map("doctors")
+}
+
+model DoctorSchedule {
+  id          String   @id @default(uuid()) @db.Uuid
+  doctorId    String   @map("doctor_id") @db.Uuid
+  doctor      Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  weekday     Int      // 0-6 (Sunday to Saturday)
+  startTime   String   @map("start_time") // HH:MM
+  endTime     String   @map("end_time")   // HH:MM
+  maxPatients Int?     @map("max_patients")
+
+  @@map("doctor_schedules")
+}
+
+model Appointment {
+  id              String            @id @default(uuid()) @db.Uuid
+  patientId       String            @map("patient_id") @db.Uuid
+  patient         Patient           @relation(fields: [patientId], references: [id])
+  doctorId        String            @map("doctor_id") @db.Uuid
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  reservedAt      DateTime          @default(now()) @map("reserved_at") @db.Timestamptz
+  appointmentDate DateTime          @map("appointment_date") @db.Date
+  queueNumber     Int               @map("queue_number")
+  status          AppointmentStatus @default(BOOKED)
+  createdBy       String?           @map("created_by") @db.Uuid
+
+  @@unique([doctorId, appointmentDate, queueNumber])
+  @@index([doctorId, appointmentDate])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+model DoctorDayCounter {
+  doctorId   String   @map("doctor_id") @db.Uuid
+  date       DateTime @db.Date
+  lastNumber Int      @default(0) @map("last_number")
+  doctor     Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@id([doctorId, date])
+  @@map("doctor_day_counters")
+}
+
+model LabTest {
+  id             String         @id @default(uuid()) @db.Uuid
+  code           String         @unique
+  name           String
+  nameAr         String?        @map("name_ar")
+  unit           String?
+  referenceRange String?        @map("reference_range")
+  active         Boolean        @default(true)
+  orderItems     LabOrderItem[]
+
+  @@map("lab_tests")
+}
+
+model LabOrder {
+  id          String         @id @default(uuid()) @db.Uuid
+  patientId   String         @map("patient_id") @db.Uuid
+  patient     Patient        @relation(fields: [patientId], references: [id])
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  createdBy   String?        @map("created_by") @db.Uuid
+  status      LabOrderStatus @default(BOOKED)
+  completedAt DateTime?      @map("completed_at") @db.Timestamptz
+  syncedAt    DateTime?      @map("synced_at") @db.Timestamptz
+  items       LabOrderItem[]
+
+  @@index([patientId])
+  @@index([status])
+  @@map("lab_orders")
+}
+
+model LabOrderItem {
+  id          String          @id @default(uuid()) @db.Uuid
+  orderId     String          @map("order_id") @db.Uuid
+  order       LabOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  testId      String          @map("test_id") @db.Uuid
+  test        LabTest         @relation(fields: [testId], references: [id])
+  resultValue String?         @map("result_value")
+  flag        TestResultFlag?
+  enteredBy   String?         @map("entered_by") @db.Uuid
+  enteredAt   DateTime?       @map("entered_at") @db.Timestamptz
+
+  @@map("lab_order_items")
+}
+
+model PortalAccountLocal {
+  id           String    @id @default(uuid()) @db.Uuid
+  patientId    String    @unique @map("patient_id") @db.Uuid
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  portalUserId String    @unique @map("portal_user_id")
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  reissuedAt   DateTime? @map("reissued_at") @db.Timestamptz
+
+  @@map("portal_accounts_local")
+}
+
+model SyncOutbox {
+  id            String     @id @default(uuid()) @db.Uuid
+  type          SyncType
+  payload       Json
+  status        SyncStatus @default(PENDING)
+  attempts      Int        @default(0)
+  lastError     String?    @map("last_error")
+  nextAttemptAt DateTime?  @map("next_attempt_at") @db.Timestamptz
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, nextAttemptAt])
+  @@map("sync_outbox")
+}
+
+model StaffUser {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  role         StaffRole
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("staff_users")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  targetType String   @map("target_type")
+  targetId   String?  @map("target_id")
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([action])
+  @@index([targetType, targetId])
+  @@map("audit_log")
+}

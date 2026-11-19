@@ -1,0 +1,53 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-portal"
+}
+
+enum PortalTestFlag {
+  NORMAL
+  HIGH
+  LOW
+}
+
+model PortalAccount {
+  id                 String         @id @default(uuid()) @db.Uuid
+  patientRef         String         @unique @map("patient_ref") @db.Uuid
+  userId             String         @unique @map("user_id")
+  passwordHash       String         @map("password_hash")
+  patientName        String         @map("patient_name")
+  mustChangePassword Boolean        @default(false) @map("must_change_password")
+  failedAttempts     Int            @default(0) @map("failed_attempts")
+  lockedUntil        DateTime?      @map("locked_until") @db.Timestamptz
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  results            PortalResult[]
+
+  @@index([userId])
+  @@map("portal_accounts")
+}
+
+model PortalResult {
+  id             String          @id @default(uuid()) @db.Uuid
+  patientRef     String          @map("patient_ref") @db.Uuid
+  account        PortalAccount   @relation(fields: [patientRef], references: [patientRef], onDelete: Cascade)
+  orderRef       String          @map("order_ref") @db.Uuid
+  testRef        String          @map("test_ref") @db.Uuid
+  testName       String          @map("test_name")
+  testNameAr     String?         @map("test_name_ar")
+  value          String
+  unit           String?
+  referenceRange String?         @map("reference_range")
+  flag           PortalTestFlag?
+  completedAt    DateTime        @map("completed_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([orderRef, testRef])
+  @@index([patientRef])
+  @@map("portal_results")
+}

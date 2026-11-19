@@ -1,0 +1,30 @@
+{
+  "common": {
+    "clinicName": "Alex Clinic",
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "search": "Search",
+    "language": "Language",
+    "arabic": "العربية",
+    "english": "English"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "frontDesk": "Front Desk",
+    "doctorQueue": "Doctor Queue",
+    "laboratory": "Laboratory",
+    "admin": "Admin"
+  },
+  "auth": {
+    "title": "Staff Portal Login",
+    "subtitle": "Enter your credentials to access the clinic system",
+    "submit": "Sign in",
+    "invalidCredentials": "Invalid username or password",
+    "loggedInAs": "Logged in as"
+  }
+}
