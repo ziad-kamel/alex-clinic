@@ -11,14 +11,22 @@
     "search": "Search",
     "language": "Language",
     "arabic": "العربية",
-    "english": "English"
+    "english": "English",
+    "print": "Print Receipt",
+    "reprint": "Reprint",
+    "status": "Status",
+    "actions": "Actions",
+    "all": "All",
+    "today": "Today"
   },
   "nav": {
     "dashboard": "Dashboard",
     "frontDesk": "Front Desk",
     "doctorQueue": "Doctor Queue",
     "laboratory": "Laboratory",
-    "admin": "Admin"
+    "admin": "Admin",
+    "appointments": "Appointments",
+    "registerPatient": "Register Patient"
   },
   "auth": {
     "title": "Staff Portal Login",
@@ -26,5 +34,48 @@
     "submit": "Sign in",
     "invalidCredentials": "Invalid username or password",
     "loggedInAs": "Logged in as"
+  },
+  "frontDesk": {
+    "title": "Front Desk & Reception",
+    "registerPatientTitle": "Register New Patient",
+    "searchPatientTitle": "Patient Search & Lookup",
+    "searchPlaceholder": "Search by patient name or phone number...",
+    "fullName": "Full Name",
+    "phone": "Phone Number",
+    "extraPhone": "Extra Phone (Optional)",
+    "registerBtn": "Register & Proceed",
+    "bookAppointmentTitle": "Book Doctor Appointment",
+    "selectDoctor": "Select Doctor",
+    "selectDate": "Appointment Date",
+    "bookBtn": "Book Appointment",
+    "bookingSuccess": "Appointment successfully booked!",
+    "assignedQueue": "Assigned Queue Number",
+    "sessionStarts": "Doctor Session Starts",
+    "workingDays": "Working days",
+    "nonWorkingDayAlert": "The selected doctor does not work on this day.",
+    "todayAppointments": "Today's Appointments",
+    "filterByDoctor": "Filter by Doctor",
+    "cancelConfirm": "Are you sure you want to cancel this appointment? (Renumbering will not occur)",
+    "cancelSuccess": "Appointment cancelled.",
+    "noAppointments": "No appointments booked for today.",
+    "noPatientsFound": "No patients found matching your search."
+  },
+  "receipt": {
+    "appointmentReceipt": "Appointment Receipt",
+    "receiptNumber": "Receipt No",
+    "patient": "Patient",
+    "phone": "Phone",
+    "doctor": "Doctor",
+    "specialization": "Specialization",
+    "reservationTime": "Reservation Date & Time",
+    "appointmentDate": "Appointment Date",
+    "queueNumber": "Queue Number",
+    "sessionStarts": "Session Starts",
+    "bilingualQueue": "Queue Number / رقم الدور",
+    "bilingualDoctor": "Doctor / الطبيب",
+    "bilingualPatient": "Patient / المريض",
+    "bilingualDate": "Date / التاريخ",
+    "bilingualSession": "Session Starts / موعد بدء العيادة",
+    "printTip": "Please present this receipt upon arrival to the clinic queue."
   }
 }

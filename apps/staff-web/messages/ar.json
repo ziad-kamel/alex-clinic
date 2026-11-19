@@ -11,14 +11,22 @@
     "search": "بحث",
     "language": "اللغة",
     "arabic": "العربية",
-    "english": "English"
+    "english": "English",
+    "print": "طباعة الإيصال",
+    "reprint": "إعادة طباعة",
+    "status": "الحالة",
+    "actions": "الإجراءات",
+    "all": "الكل",
+    "today": "اليوم"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
     "frontDesk": "الاستقبال",
     "doctorQueue": "طابور العيادة",
     "laboratory": "المختبر والتحاليل",
-    "admin": "الإدارة"
+    "admin": "الإدارة",
+    "appointments": "المواعيد والحجوزات",
+    "registerPatient": "تسجيل مريض"
   },
   "auth": {
     "title": "دخول موظفي العيادة",
@@ -26,5 +34,48 @@
     "submit": "تسجيل الدخول",
     "invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة",
     "loggedInAs": "مسجل كـ"
+  },
+  "frontDesk": {
+    "title": "قسم الاستقبال والمواعيد",
+    "registerPatientTitle": "تسجيل مريض جديد",
+    "searchPatientTitle": "البحث عن مريض",
+    "searchPlaceholder": "ابحث بالاسم أو رقم الهاتف...",
+    "fullName": "الاسم بالكامل",
+    "phone": "رقم الهاتف",
+    "extraPhone": "رقم هاتف إضافي (اختياري)",
+    "registerBtn": "تسجيل المريض ومتابعة الحجز",
+    "bookAppointmentTitle": "حجز موعد كشف طبي",
+    "selectDoctor": "اختر الطبيب",
+    "selectDate": "تاريخ الكشف",
+    "bookBtn": "تأكيد الحجز",
+    "bookingSuccess": "تم الحجز بنجاح!",
+    "assignedQueue": "رقم الدور المخصص",
+    "sessionStarts": "موعد بدء العيادة",
+    "workingDays": "أيام العمل",
+    "nonWorkingDayAlert": "الطبيب المختار ليس لديه عيادة في هذا اليوم.",
+    "todayAppointments": "حجوزات وكشوفات اليوم",
+    "filterByDoctor": "تصفية حسب الطبيب",
+    "cancelConfirm": "هل أنت متأكد من إلغاء هذا الحجز؟ (لن تتغير أرقام أدوار المرضى الآخرين)",
+    "cancelSuccess": "تم إلغاء الحجز.",
+    "noAppointments": "لا توجد حجوزات مسجلة لليوم.",
+    "noPatientsFound": "لم يتم العثور على مرضى مطابقين للبحث."
+  },
+  "receipt": {
+    "appointmentReceipt": "إيصال حجز كشف",
+    "receiptNumber": "رقم الإيصال",
+    "patient": "المريض",
+    "phone": "الهاتف",
+    "doctor": "الطبيب",
+    "specialization": "التخصص",
+    "reservationTime": "تاريخ ووقت الحجز",
+    "appointmentDate": "تاريخ الكشف",
+    "queueNumber": "رقم الدور",
+    "sessionStarts": "موعد بدء العيادة",
+    "bilingualQueue": "Queue Number / رقم الدور",
+    "bilingualDoctor": "Doctor / الطبيب",
+    "bilingualPatient": "Patient / المريض",
+    "bilingualDate": "Date / التاريخ",
+    "bilingualSession": "Session Starts / موعد بدء العيادة",
+    "printTip": "يرجى إبراز هذا الإيصال عند الحضور إلى العيادة."
   }
 }

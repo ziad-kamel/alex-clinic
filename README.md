@@ -29,6 +29,18 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 
 ---
 
+## Phase 1 Front Desk & Appointments Status
+
+- [x] Specialization and Doctor management APIs (CRUD, active filtering, weekly schedules with `maxPatients`).
+- [x] Patient search with Arabic letter normalization (`أ/إ/آ` -> `ا`, `ى` -> `ي`, diacritics ignored) and patient registration.
+- [x] Concurrency-safe appointment booking using atomic `doctor_day_counters` row upsert/increment within database transactions.
+- [x] Validation against doctor working weekdays and session start time.
+- [x] Automated concurrency test (`apps/api/src/appointments/__tests__/appointments.service.spec.ts`) passing: verifies unique sequential queue numbers and non-working day rejection.
+- [x] Bilingual 80mm thermal receipt printing at `/print/appointment/:id` with CSS `@page { size: 80mm auto; }` and auto-printing.
+- [x] Front Desk Dashboard (`/dashboard/front-desk`): Patient lookup/registration, booking flow with assigned queue modal, and today's appointments table with doctor filter and cancellation.
+
+---
+
 ## Setup & Running Locally
 
 ### 1. Environment Setup
