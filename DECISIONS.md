@@ -43,3 +43,34 @@
   1. Instant querying on every keydown: rejected due to DB connection pressure and server overhead.
   2. Client-side full table filtering: rejected because loading all patients into memory is unscalable for a production clinic.
 - **Consequences:** Real-time search experience with minimal database queries and zero stale-response race conditions.
+
+## DECISION-005: Cryptographically Secure Unambiguous Credential Generation & Ephemeral Plaintext Handling
+
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:** Section 7.4 mandates generating random 8-character `portal_user_id` without ambiguous characters (no `0`, `O`, `1`, `I`, `L`) and 10-character passwords, ensuring plaintext passwords appear ONLY once on the printed receipt and are never stored or logged.
+- **Decision:** Implemented `crypto.randomBytes`-selected strings using character set `ABCDEFGHJKMNPQRSTUVWXYZ23456789` for user IDs and added lowercase for passwords. Passwords are saved solely as bcrypt hashes (cost factor 10) in `portal_accounts_local`. The plain password is provided strictly in the booking/reissue API response payload for immediate 80mm thermal receipt printing and is excluded from any audit logs, database tables, or server logs.
+- **Alternatives Considered:**
+  1. Sequential numeric IDs: rejected due to patient enumeration security risks.
+  2. Storing reversible encrypted passwords: rejected per non-negotiable security rules in Section 9.
+- **Consequences:** Safe, collision-checked credential generation with zero plaintext credential exposure at rest.
+
+## DECISION-006: Atomic Lab Order Booking with Transactional Account Creation & Sync Outbox Queuing
+
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:** When booking lab tests for a patient without an existing portal account, the lab order, test items, portal account local record, and cloud synchronization outbox entry must be created reliably together.
+- **Decision:** Wrapped order creation, existing account check, portal account creation, and `sync_outbox` (`ACCOUNT_UPSERT`) row insertion in a single Prisma interactive transaction (`maxWait: 15000, timeout: 20000`). If a patient already possesses an account, the existing `portal_user_id` is linked and no new account or plaintext password is generated.
+- **Alternatives Considered:**
+  1. Creating portal accounts asynchronously via background workers: rejected because the front desk must print the credentials receipt immediately upon booking.
+- **Consequences:** Eliminates orphaned orders or unsynchronized patient credentials; second orders safely reuse the existing account.
+
+## DECISION-007: Mandatory Completeness Guard for Lab Order Finalization & Audited Post-Completion Edits
+
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:** Section 7.3 specifies that lab staff cannot complete an order if any test item lacks a result, and editing results after completion is restricted to `LAB` and `ADMIN` with audit trail recording.
+- **Decision:** `completeLabOrder()` enforces that every `LabOrderItem` has a non-empty `resultValue`, updating order status to `COMPLETED` and queuing a `RESULT_UPSERT` in `sync_outbox`. `enterResult()` checks order status: if already `COMPLETED`, it writes an `audit_log` entry with previous and updated values and re-queues a new `RESULT_UPSERT` to keep the patient portal synchronized.
+- **Alternatives Considered:**
+  1. Allowing partial completion: rejected per specification Section 7.3.
+- **Consequences:** Ensures only complete, verified diagnostic results reach the portal while preserving full accountability for post-verification amendments.

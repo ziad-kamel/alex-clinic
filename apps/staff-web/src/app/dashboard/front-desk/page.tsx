@@ -24,6 +24,9 @@ interface Patient {
   name: string;
   phone: string;
   extraPhone?: string;
+  portalAccountLocal?: {
+    portalUserId: string;
+  };
 }
 
 interface Appointment {
@@ -35,10 +38,23 @@ interface Appointment {
   doctor: { name: string; nameAr?: string; specialization: { name: string; nameAr?: string } };
 }
 
+interface LabTest {
+  id: string;
+  code: string;
+  name: string;
+  nameAr?: string;
+  unit?: string;
+  referenceRange?: string;
+}
+
 export default function FrontDeskPage() {
   const t = useTranslations('frontDesk');
+  const tLab = useTranslations('lab');
   const tCommon = useTranslations('common');
   const locale = useLocale();
+
+  // Active Booking Tab: 'APPOINTMENT' | 'LAB'
+  const [activeTab, setActiveTab] = useState<'APPOINTMENT' | 'LAB'>('APPOINTMENT');
 
   // Patients Search & Filter State
   const [searchName, setSearchName] = useState('');
@@ -66,13 +82,28 @@ export default function FrontDeskPage() {
   const [doctorNameQuery, setDoctorNameQuery] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
 
-  // Booking State
+  // Appointment Booking State
   const [appointmentDate, setAppointmentDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
   const [bookingResult, setBookingResult] = useState<any | null>(null);
   const [bookingError, setBookingError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Lab Tests Catalog & Booking State
+  const [labCatalog, setLabCatalog] = useState<LabTest[]>([]);
+  const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
+  const [labSearchQuery, setLabSearchQuery] = useState('');
+  const [labBookingLoading, setLabBookingLoading] = useState(false);
+  const [labBookingError, setLabBookingError] = useState('');
+  const [labBookingResult, setLabBookingResult] = useState<any | null>(null);
+
+  // Credential Reissue State
+  const [reissuing, setReissuing] = useState(false);
+  const [reissuedCredentials, setReissuedCredentials] = useState<{
+    portalUserId: string;
+    plainPassword: string;
+  } | null>(null);
 
   // Today's Appointments
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -93,6 +124,12 @@ export default function FrontDeskPage() {
     fetch('/api/specializations')
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setSpecializations(data))
+      .catch(() => {});
+
+    // Lab Tests Catalog
+    fetch('/api/lab-tests')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setLabCatalog(data))
       .catch(() => {});
 
     loadTodayAppointments();
@@ -265,6 +302,84 @@ export default function FrontDeskPage() {
     } catch {}
   };
 
+  // Book Lab Order
+  const handleBookLabOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatient) {
+      setLabBookingError('Please select or register a patient first');
+      return;
+    }
+    if (selectedTestIds.length === 0) {
+      setLabBookingError(tLab('noTestsSelected'));
+      return;
+    }
+
+    setLabBookingLoading(true);
+    setLabBookingError('');
+    setLabBookingResult(null);
+
+    try {
+      const res = await fetch('/api/lab-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: selectedPatient.id,
+          testIds: selectedTestIds,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setLabBookingError(data.message || 'Failed to book lab order');
+        return;
+      }
+
+      setLabBookingResult(data);
+      setSelectedTestIds([]);
+    } catch {
+      setLabBookingError('Network error booking lab order');
+    } finally {
+      setLabBookingLoading(false);
+    }
+  };
+
+  // Toggle Test Selection
+  const toggleTestSelection = (testId: string) => {
+    setSelectedTestIds((prev) =>
+      prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId],
+    );
+  };
+
+  // Filtered Lab Catalog
+  const filteredCatalog = labCatalog.filter((item) => {
+    const q = labSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      item.code.toLowerCase().includes(q) ||
+      item.name.toLowerCase().includes(q) ||
+      (item.nameAr && item.nameAr.toLowerCase().includes(q))
+    );
+  });
+
+  // Reissue Portal Credentials
+  const handleReissueCredentials = async () => {
+    if (!selectedPatient) return;
+    if (!window.confirm(tLab('reissueConfirm'))) return;
+
+    setReissuing(true);
+    try {
+      const res = await fetch(`/api/patients/${selectedPatient.id}/portal-account/reissue`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReissuedCredentials(data);
+      }
+    } catch {} finally {
+      setReissuing(false);
+    }
+  };
+
   const selectedDoctor = doctors.find((d) => d.id === selectedDoctorId);
 
   return (
@@ -272,7 +387,7 @@ export default function FrontDeskPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Patient search & pagination, doctor multi-filters, appointment booking, and 80mm receipts
+          Patient search & pagination, doctor multi-filters, appointment booking, lab orders, and 80mm receipts
         </p>
       </div>
 
@@ -296,6 +411,7 @@ export default function FrontDeskPage() {
                 onClick={() => {
                   setShowNewPatient(!showNewPatient);
                   setSelectedPatient(null);
+                  setReissuedCredentials(null);
                 }}
                 className="text-xs px-3 py-1.5 font-medium rounded-md bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100"
               >
@@ -347,7 +463,10 @@ export default function FrontDeskPage() {
                     patients.map((p) => (
                       <div
                         key={p.id}
-                        onClick={() => setSelectedPatient(p)}
+                        onClick={() => {
+                          setSelectedPatient(p);
+                          setReissuedCredentials(null);
+                        }}
                         className={`p-3 cursor-pointer text-sm flex justify-between items-center hover:bg-teal-50 transition-colors ${
                           selectedPatient?.id === p.id ? 'bg-teal-100 font-semibold text-teal-900' : ''
                         }`}
@@ -446,160 +565,353 @@ export default function FrontDeskPage() {
             )}
           </div>
 
-          {/* Selected Patient Banner */}
+          {/* Selected Patient Banner & Portal Reissue */}
           {selectedPatient && (
-            <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-md flex justify-between items-center text-sm">
-              <div>
-                <span className="text-xs text-teal-800 font-medium">Selected Patient: </span>
-                <strong>{selectedPatient.name}</strong> ({selectedPatient.phone})
+            <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-md space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <div>
+                  <span className="text-xs text-teal-800 font-medium">Selected Patient: </span>
+                  <strong>{selectedPatient.name}</strong> ({selectedPatient.phone})
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedPatient(null);
+                    setReissuedCredentials(null);
+                  }}
+                  className="text-xs text-slate-500 hover:text-red-600 underline"
+                >
+                  Clear
+                </button>
               </div>
-              <button
-                onClick={() => setSelectedPatient(null)}
-                className="text-xs text-slate-500 hover:text-red-600 underline"
-              >
-                Clear
-              </button>
+
+              {/* Portal Credentials Reissue Action */}
+              <div className="pt-2 border-t border-teal-200 flex items-center justify-between">
+                <span className="text-xs text-teal-900">
+                  Patient Portal / بوابة المريض
+                </span>
+                <button
+                  onClick={handleReissueCredentials}
+                  disabled={reissuing}
+                  className="text-xs px-2.5 py-1 bg-white border border-teal-300 text-teal-800 font-medium rounded hover:bg-teal-100 disabled:opacity-50"
+                >
+                  {reissuing ? tCommon('loading') : `🔑 ${tLab('reissueCredentials')}`}
+                </button>
+              </div>
+
+              {/* Reissued Credentials Alert */}
+              {reissuedCredentials && (
+                <div className="p-3 bg-white border border-teal-400 rounded text-xs space-y-1">
+                  <div className="font-bold text-teal-800">✓ {tLab('reissuedSuccess')}</div>
+                  <div>User ID / اسم المستخدم: <strong className="font-mono">{reissuedCredentials.portalUserId}</strong></div>
+                  <div>New Password / كلمة السر: <strong className="font-mono text-teal-900 bg-amber-100 px-1.5 py-0.5 rounded">{reissuedCredentials.plainPassword}</strong></div>
+                  <div className="text-[10px] text-slate-500">{tLab('passwordNote')}</div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Right Column: Doctor Multi-Filters & Appointment Booking */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">
-            {t('bookAppointmentTitle')}
-          </h2>
+        {/* Right Column: Tabbed Booking Interface (Appointments vs Lab Tests) */}
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            {/* Booking Mode Tabs */}
+            <div className="flex border-b border-slate-200 mb-5 space-x-4 rtl:space-x-reverse">
+              <button
+                type="button"
+                onClick={() => setActiveTab('APPOINTMENT')}
+                className={`pb-2.5 px-2 text-sm font-bold border-b-2 transition-colors ${
+                  activeTab === 'APPOINTMENT'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                🩺 {t('bookAppointmentTitle')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('LAB')}
+                className={`pb-2.5 px-2 text-sm font-bold border-b-2 transition-colors ${
+                  activeTab === 'LAB'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                🔬 {tLab('bookLabOrder')}
+              </button>
+            </div>
 
-          <form onSubmit={handleBookAppointment} className="space-y-4">
-            {bookingError && (
-              <div className="p-3 text-xs bg-red-100 text-red-700 border border-red-200 rounded-md">
-                {bookingError}
-              </div>
-            )}
-
-            {/* Doctor Filters: Specialization + Name search */}
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Doctor Search & Filter / تصفية الأطباء
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {/* Specialization Filter */}
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                    {t('filterBySpecialization')}
-                  </label>
-                  <select
-                    value={selectedSpecFilter}
-                    onChange={(e) => setSelectedSpecFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
-                  >
-                    <option value="">{t('allSpecializations')}</option>
-                    {specializations.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {locale === 'ar' && s.nameAr ? s.nameAr : s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Doctor Name Search */}
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                    {t('filterByName')}
-                  </label>
-                  <input
-                    type="text"
-                    value={doctorNameQuery}
-                    onChange={(e) => setDoctorNameQuery(e.target.value)}
-                    placeholder={t('filterDoctorName')}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
-                  />
-                </div>
-              </div>
-
-              {/* Doctor Dropdown Selector */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1">
-                  {t('selectDoctor')} * ({filteredDoctors.length} found)
-                </label>
-                {filteredDoctors.length === 0 ? (
-                  <p className="text-xs text-red-600 italic py-1">
-                    {t('noDoctorsFound')}
-                  </p>
-                ) : (
-                  <select
-                    value={selectedDoctorId}
-                    onChange={(e) => setSelectedDoctorId(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:outline-none focus:ring-teal-500"
-                  >
-                    {filteredDoctors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {locale === 'ar' && d.nameAr ? d.nameAr : d.name} (
-                        {locale === 'ar' && d.specialization.nameAr
-                          ? d.specialization.nameAr
-                          : d.specialization.name}
-                        )
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {/* Working days schedule hint */}
-                {selectedDoctor && (
-                  <div className="mt-1 text-[11px] text-slate-600">
-                    <strong>{t('workingDays')}: </strong>
-                    {selectedDoctor.schedules.length === 0
-                      ? 'No schedule'
-                      : selectedDoctor.schedules
-                          .map((s) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.weekday])
-                          .join(', ')}
+            {/* TAB 1: DOCTOR APPOINTMENT BOOKING */}
+            {activeTab === 'APPOINTMENT' && (
+              <form onSubmit={handleBookAppointment} className="space-y-4">
+                {bookingError && (
+                  <div className="p-3 text-xs bg-red-100 text-red-700 border border-red-200 rounded-md">
+                    {bookingError}
                   </div>
                 )}
-              </div>
-            </div>
 
-            {/* Appointment Date */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {t('selectDate')} *
-              </label>
-              <input
-                type="date"
-                required
-                value={appointmentDate}
-                onChange={(e) => setAppointmentDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
-              />
-            </div>
+                {/* Doctor Filters: Specialization + Name search */}
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Doctor Search & Filter / تصفية الأطباء
+                  </span>
 
-            <button
-              type="submit"
-              disabled={loading || !selectedPatient || filteredDoctors.length === 0}
-              className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
-            >
-              {loading ? tCommon('loading') : t('bookBtn')}
-            </button>
-          </form>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Specialization Filter */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        {t('filterBySpecialization')}
+                      </label>
+                      <select
+                        value={selectedSpecFilter}
+                        onChange={(e) => setSelectedSpecFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
+                      >
+                        <option value="">{t('allSpecializations')}</option>
+                        {specializations.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {locale === 'ar' && s.nameAr ? s.nameAr : s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-          {/* Booking Success Banner & Print Link */}
-          {bookingResult && (
-            <div className="mt-6 p-4 bg-teal-50 border border-teal-300 rounded-lg text-center">
-              <div className="text-teal-800 font-bold mb-1">{t('bookingSuccess')}</div>
-              <div className="text-3xl font-extrabold text-teal-900 my-2">
-                #{bookingResult.queueNumber}
-              </div>
-              <div className="text-xs text-slate-600 mb-3">
-                {t('sessionStarts')}: <strong>{bookingResult.sessionStartTime}</strong>
-              </div>
-              <Link
-                href={`/print/appointment/${bookingResult.id}`}
-                target="_blank"
-                className="inline-block px-4 py-2 bg-teal-700 text-white text-xs font-bold rounded shadow hover:bg-teal-800"
-              >
-                🖨️ {tCommon('print')} (80mm)
-              </Link>
-            </div>
-          )}
+                    {/* Doctor Name Search */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        {t('filterByName')}
+                      </label>
+                      <input
+                        type="text"
+                        value={doctorNameQuery}
+                        onChange={(e) => setDoctorNameQuery(e.target.value)}
+                        placeholder={t('filterDoctorName')}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:ring-teal-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Doctor Dropdown Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-800 mb-1">
+                      {t('selectDoctor')} * ({filteredDoctors.length} found)
+                    </label>
+                    {filteredDoctors.length === 0 ? (
+                      <p className="text-xs text-red-600 italic py-1">
+                        {t('noDoctorsFound')}
+                      </p>
+                    ) : (
+                      <select
+                        value={selectedDoctorId}
+                        onChange={(e) => setSelectedDoctorId(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:outline-none focus:ring-teal-500"
+                      >
+                        {filteredDoctors.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {locale === 'ar' && d.nameAr ? d.nameAr : d.name} (
+                            {locale === 'ar' && d.specialization.nameAr
+                              ? d.specialization.nameAr
+                              : d.specialization.name}
+                            )
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* Working days schedule hint */}
+                    {selectedDoctor && (
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        <strong>{t('workingDays')}: </strong>
+                        {selectedDoctor.schedules.length === 0
+                          ? 'No schedule'
+                          : selectedDoctor.schedules
+                              .map((s) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.weekday])
+                              .join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Appointment Date */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {t('selectDate')} *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={appointmentDate}
+                    onChange={(e) => setAppointmentDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-teal-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !selectedPatient || filteredDoctors.length === 0}
+                  className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {loading ? tCommon('loading') : t('bookBtn')}
+                </button>
+
+                {/* Booking Success Banner & Print Link */}
+                {bookingResult && (
+                  <div className="mt-4 p-4 bg-teal-50 border border-teal-300 rounded-lg text-center">
+                    <div className="text-teal-800 font-bold mb-1">{t('bookingSuccess')}</div>
+                    <div className="text-3xl font-extrabold text-teal-900 my-2">
+                      #{bookingResult.queueNumber}
+                    </div>
+                    <div className="text-xs text-slate-600 mb-3">
+                      {t('sessionStarts')}: <strong>{bookingResult.sessionStartTime}</strong>
+                    </div>
+                    <Link
+                      href={`/print/appointment/${bookingResult.id}`}
+                      target="_blank"
+                      className="inline-block px-4 py-2 bg-teal-700 text-white text-xs font-bold rounded shadow hover:bg-teal-800"
+                    >
+                      🖨️ {tCommon('print')} (80mm)
+                    </Link>
+                  </div>
+                )}
+              </form>
+            )}
+
+            {/* TAB 2: LAB TESTS ORDER BOOKING */}
+            {activeTab === 'LAB' && (
+              <form onSubmit={handleBookLabOrder} className="space-y-4">
+                {labBookingError && (
+                  <div className="p-3 text-xs bg-red-100 text-red-700 border border-red-200 rounded-md">
+                    {labBookingError}
+                  </div>
+                )}
+
+                {/* Lab Test Catalog Picker */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-bold text-slate-800">
+                      {tLab('selectTests')} * ({selectedTestIds.length} selected)
+                    </label>
+                    <input
+                      type="text"
+                      value={labSearchQuery}
+                      onChange={(e) => setLabSearchQuery(e.target.value)}
+                      placeholder={tLab('searchTests')}
+                      className="px-2.5 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:ring-teal-500"
+                    />
+                  </div>
+
+                  {/* Test Catalog Items */}
+                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-md">
+                    {filteredCatalog.length === 0 ? (
+                      <p className="p-4 text-xs text-slate-500 text-center">
+                        No tests match search
+                      </p>
+                    ) : (
+                      filteredCatalog.map((test) => {
+                        const isSelected = selectedTestIds.includes(test.id);
+                        return (
+                          <div
+                            key={test.id}
+                            onClick={() => toggleTestSelection(test.id)}
+                            className={`p-2.5 text-xs flex justify-between items-center cursor-pointer transition-colors ${
+                              isSelected
+                                ? 'bg-teal-50 font-bold text-teal-900'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div>
+                              <span className="font-mono text-slate-500 mr-2 rtl:mr-0 rtl:ml-2">
+                                [{test.code}]
+                              </span>
+                              <span>
+                                {locale === 'ar' && test.nameAr ? test.nameAr : test.name}
+                              </span>
+                              {test.referenceRange && (
+                                <span className="text-[11px] text-slate-400 ml-2 rtl:ml-0 rtl:mr-2">
+                                  ({test.referenceRange} {test.unit || ''})
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              className="rounded text-teal-600 focus:ring-teal-500"
+                            />
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={labBookingLoading || !selectedPatient || selectedTestIds.length === 0}
+                  className="w-full py-2 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {labBookingLoading ? tCommon('loading') : `🔬 ${tLab('bookLabOrder')}`}
+                </button>
+
+                {/* Lab Booking Success Banner & Credentials Presentation */}
+                {labBookingResult && (
+                  <div className="mt-4 p-4 bg-teal-50 border border-teal-300 rounded-lg space-y-3">
+                    <div className="text-teal-900 font-bold text-sm text-center">
+                      ✓ {tLab('orderSuccess')}
+                    </div>
+
+                    {/* Portal Credentials Box */}
+                    <div className="p-3 bg-white border border-teal-400 rounded text-xs space-y-1.5 shadow-xs">
+                      <div className="font-bold text-teal-800 border-b border-slate-200 pb-1">
+                        {tLab('credentialsNotice')}
+                      </div>
+                      <div className="text-[11px] text-slate-600">
+                        {tLab('credentialsNoticeSubtitle')}
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="font-semibold">{tLab('portalUserId')}:</span>
+                        <span className="font-mono font-bold text-sm bg-slate-100 px-2 py-0.5 rounded">
+                          {labBookingResult.portalAccount.portalUserId}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">{tLab('portalPassword')}:</span>
+                        {labBookingResult.portalAccount.plainPassword ? (
+                          <span className="font-mono font-bold text-sm bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                            {labBookingResult.portalAccount.plainPassword}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-500 italic">
+                            ({tLab('passwordGivenEarlier')})
+                          </span>
+                        )}
+                      </div>
+                      {labBookingResult.portalAccount.plainPassword && (
+                        <p className="text-[10px] text-amber-800">
+                          * {tLab('passwordNote')}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-center pt-1">
+                      <Link
+                        href={`/print/lab/${labBookingResult.order.id}${
+                          labBookingResult.portalAccount.plainPassword
+                            ? `?pwd=${encodeURIComponent(
+                                labBookingResult.portalAccount.plainPassword,
+                              )}`
+                            : ''
+                        }`}
+                        target="_blank"
+                        className="inline-block px-4 py-2 bg-teal-700 text-white text-xs font-bold rounded shadow hover:bg-teal-800"
+                      >
+                        🖨️ {tCommon('print')} (80mm Lab Receipt)
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
         </div>
       </div>
 

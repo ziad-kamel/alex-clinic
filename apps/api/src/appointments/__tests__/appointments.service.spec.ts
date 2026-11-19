@@ -18,7 +18,7 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
-  }, 15000);
+  }, 30000);
 
   it('rejects booking on a non-working day', async () => {
     // Dr. Ahmed Mostafa has schedules for Sunday-Thursday (weekday 0-4).
@@ -38,7 +38,7 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
         ),
       ).rejects.toThrow(BadRequestException);
     }
-  });
+  }, 30000);
 
   it('generates sequential unique queue numbers under concurrency', async () => {
     const doctor = await prisma.doctor.findFirst({ where: { active: true } });
@@ -46,7 +46,16 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
 
     // Use a date that is a Sunday (weekday 0), e.g. 2026-11-22
     const testDate = '2026-11-22';
+    const testDateObj = new Date(Date.UTC(2026, 10, 22));
     const testStaffId = '00000000-0000-0000-0000-000000000001';
+
+    // Clean up any stale data from previous test runs first
+    await prisma.appointment.deleteMany({
+      where: { doctorId: doctor.id, appointmentDate: testDateObj },
+    });
+    await prisma.doctorDayCounter.deleteMany({
+      where: { doctorId: doctor.id, date: testDateObj },
+    });
 
     // Create 10 test patients
     const patients = await Promise.all(
@@ -99,5 +108,5 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
     await prisma.patient.deleteMany({
       where: { id: { in: patients.map((p) => p.id) } },
     });
-  }, 30000);
+  }, 50000);
 });

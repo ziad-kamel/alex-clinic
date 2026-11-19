@@ -41,6 +41,20 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 
 ---
 
+## Phase 2 Laboratory Status
+
+- [x] **Lab Test Catalog CRUD:** `/api/lab-tests` for `ADMIN`, with catalog listing for `FRONT_DESK` and `LAB`.
+- [x] **Lab Order Booking with Portal Account Auto-Creation:** `POST /api/lab-orders` generates an 8-char unambiguous ID and 10-char password in a single transaction, saves the bcrypt hash, and queues `ACCOUNT_UPSERT` in `sync_outbox`. Subsequent orders reuse the existing account.
+- [x] **Ephemeral Plaintext Password Security:** The plaintext password exists solely on the booking/reissue response for printing the receipt and is never stored in DB or logged.
+- [x] **80mm Bilingual Lab Receipt:** Dedicated receipt at `/print/lab/:id` with patient details, requested tests, portal URL, user ID, and temporary password.
+- [x] **Lab Result Entry & Status Flow:** `/dashboard/lab` & `/dashboard/lab/[id]` with status tabs, result inputs, and flags (`NORMAL`, `HIGH`, `LOW`). Order automatically transitions from `BOOKED` to `IN_PROGRESS`.
+- [x] **Order Completion Guard:** `POST /api/lab-orders/:id/complete` rejects completion if any test item lacks a result, transitions to `COMPLETED`, and queues `RESULT_UPSERT` in `sync_outbox`.
+- [x] **Audited Post-Completion Edits:** Editing a completed result logs an entry in `audit_log` with before/after values and queues an updated `RESULT_UPSERT`.
+- [x] **Credential Reissue:** `POST /api/patients/:id/portal-account/reissue` allows front desk / admin to generate a new password and queue sync.
+- [x] **Acceptance Tests:** `apps/api/src/lab/__tests__/lab.service.spec.ts` passing all acceptance criteria.
+
+---
+
 ## Setup & Running Locally
 
 ### 1. Environment Setup
@@ -60,11 +74,11 @@ npm --prefix apps/api run prisma:seed
 ### 3. Start Development Servers
 - **API (NestJS):**
   ```bash
-  npm --prefix apps/api run start:dev
+  cmd.exe /c "npm --prefix apps/api run start:dev"
   ```
   Runs at `http://localhost:3001/api` (Swagger docs at `http://localhost:3001/api/docs`).
 - **Staff Web (Next.js):**
   ```bash
-  npm --prefix apps/staff-web run dev
+  cmd.exe /c "npm --prefix apps/staff-web run dev"
   ```
   Runs at `http://localhost:3000`. Default seeded admin: `admin` / `Admin@123456`.

@@ -41,53 +41,55 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [x] **Bilingual 80mm Thermal Receipt Printing:** `/print/appointment/:id` using CSS `@page { size: 80mm auto; margin: 0; }` with session cookie forwarding and auto-printing.
 - [x] Today's Appointments dashboard table with doctor filter, status badges, cancel action (without renumbering), and reprint button.
 
----
-
-## 3. Current Git Log (Recent Commits)
-- `8fea802`: `fix(print): forward staff session cookie to receipt API and document search debouncing decision`
-- `c55035d`: `feat(front-desk): implement 300ms debounced search with AbortController for patient lookup`
-- `5f9dc6c`: `feat(front-desk): add patient search pagination, name/phone filters, and doctor specialization/name filters`
-- `4082b11`: `phase-1: front desk, doctor schedules, transactional queue numbering, 80mm bilingual receipts`
-
----
-
-## 4. Next Phase: Phase 2 — Laboratory
-
-The next agent or turn MUST begin **Phase 2: Lab** per `clinic-system-dev-spec.md` Section 12:
-
-### Tasks to build:
-1. **Lab Test Catalog Management (Admin):**
-   - CRUD for `lab_tests` (`id`, `code`, `name`, `name_ar`, `unit`, `reference_range`, `active`).
-2. **Lab Order Booking (Front Desk):**
-   - Book lab order for a patient with multiple tests from the catalog.
-   - **Portal Account Auto-Creation:** If the patient has no portal account, generate one in the same transaction:
-     - 8-char random `portal_user_id` from alphabet `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no ambiguous chars).
-     - 10-char random password from same alphabet + lowercase letters.
-     - Store only bcrypt hash in `portal_accounts_local`.
-     - Queue an `ACCOUNT_UPSERT` entry in `sync_outbox`.
-3. **Bilingual 80mm Lab Receipt (`/print/lab/:id`):**
-   - Prints: clinic name, receipt number, patient name, phone, list of tests, order date/time, portal URL, user ID, and password (**only printed on creation or reissue; never re-shown later**).
-4. **Lab Results Entry Interface (Lab Role):**
-   - Pending lab orders list.
-   - Result entry form per test: `result_value`, `flag` (`NORMAL`, `HIGH`, `LOW`).
-   - Status flow: `BOOKED` -> `IN_PROGRESS` (first result entered) -> `COMPLETED` (staff clicks Complete).
-   - Validation: Cannot complete if any test item lacks a result value.
-5. **Post-Completion Result Edits & Reissue:**
-   - Editing a result after completion allowed for `LAB` and `ADMIN`: writes an `audit_log` entry and queues a `RESULT_UPSERT` in `sync_outbox`.
-   - Front desk action to reissue credentials (`POST /api/patients/:id/portal-account/reissue`).
+### Phase 2: Laboratory (COMPLETED & VERIFIED)
+- [x] **Lab Test Catalog CRUD:** (`/api/lab-tests`) for `ADMIN`, listing available for `FRONT_DESK` and `LAB`.
+- [x] **Lab Order Booking & Account Generation:** (`POST /api/lab-orders`) transactional booking of multiple tests. If patient lacks a portal account, auto-generates 8-char unambiguous ID, 10-char password, bcrypt hash, and queues `ACCOUNT_UPSERT` in `sync_outbox`. Subsequent orders reuse the account and return null password.
+- [x] **80mm Bilingual Lab Receipt:** (`/print/lab/:id`) thermal receipt displaying clinic name, receipt number, patient details, requested tests, portal access URL, portal user ID, and temporary password (only on creation/reissue).
+- [x] **Lab Results Entry Interface:** (`/dashboard/lab` & `/dashboard/lab/[id]`) filtering by status (`BOOKED`, `IN_PROGRESS`, `COMPLETED`), individual test result value input and flags (`NORMAL`, `HIGH`, `LOW`).
+- [x] **Order Completion & Guard:** (`POST /api/lab-orders/:id/complete`) strictly requires all test items to have results. Transitions status to `COMPLETED` and queues `RESULT_UPSERT` in `sync_outbox`.
+- [x] **Audited Post-Completion Edits:** Allowed for `LAB` and `ADMIN`, records `audit_log` entry with before/after values and queues updated `RESULT_UPSERT` in `sync_outbox`.
+- [x] **Portal Credential Reissue:** (`POST /api/patients/:id/portal-account/reissue`) generates new password, updates local hash, queues `ACCOUNT_UPSERT`, and logs to audit trail.
+- [x] **Automated Acceptance Tests:** (`apps/api/src/lab/__tests__/lab.service.spec.ts`) 100% passing — validates account creation/reuse, bcrypt hash security, completeness guard, and post-completion audit logging.
 
 ---
 
-## 5. Development Run Commands
+## 3. Next Phase: Phase 3 — Patient Portal & Sync
+
+The next agent or turn MUST begin **Phase 3: Portal and Sync** per `clinic-system-dev-spec.md` Section 12:
+
+### Key Tasks:
+1. **Patient Portal Web App (`apps/portal/`):**
+   - Next.js App Router (deployed to Vercel).
+   - Custom session using signed JWT (`jose`) in `httpOnly` cookie.
+   - Portal login with rate limiting & lockout (15 minutes after 5 failed attempts).
+   - Results list & detail view (A4 layout).
+   - A4 PDF generation & download for each completed order.
+   - Change password screen.
+2. **Sync Outbox & Worker:**
+   - Background sync worker running every 30 seconds (`@nestjs/schedule`).
+   - Push `PENDING` outbox rows via HMAC-SHA256 signed HTTPS requests (`X-Timestamp`, `X-Signature`) using `SYNC_SECRET`.
+   - Portal sync receivers: `POST /api/sync/accounts` and `POST /api/sync/results` with idempotent upserts.
+3. **Admin Outbox Monitor:**
+   - View pending/sent/failed outbox rows and retry failed syncs.
+
+---
+
+## 4. Development Run Commands
 
 ### Starting the Servers
 - **NestJS API (Port 3001):**
   ```bash
-  npm --prefix apps/api run start:dev
+  cmd.exe /c "npm --prefix apps/api run start:dev"
   ```
 - **Staff Web (Port 3000):**
   ```bash
-  npm --prefix apps/staff-web run dev
+  cmd.exe /c "npm --prefix apps/staff-web run dev"
+  ```
+
+### Running Test Suites
+- **Run all unit & acceptance tests:**
+  ```bash
+  cmd.exe /c "npm --prefix apps/api test -- --runInBand --forceExit"
   ```
 
 ### Credentials for Testing:

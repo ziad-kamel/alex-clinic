@@ -66,9 +66,12 @@ export default async function DashboardLayout({
             )}
 
             {(user.role === 'ADMIN' || user.role === 'LAB') && (
-              <span className="px-3 py-1.5 rounded-md text-slate-400 cursor-not-allowed">
-                {t('laboratory')} (Phase 2)
-              </span>
+              <Link
+                href="/dashboard/lab"
+                className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+              >
+                {t('laboratory')}
+              </Link>
             )}
           </nav>
         </div>

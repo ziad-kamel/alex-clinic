@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { PatientsModule } from './patients/patients.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { LabModule } from './lab/lab.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -15,6 +16,7 @@ import { RolesGuard } from './auth/roles.guard';
     PatientsModule,
     DoctorsModule,
     AppointmentsModule,
+    LabModule,
   ],
   providers: [
     {
