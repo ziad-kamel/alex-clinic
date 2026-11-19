@@ -51,12 +51,24 @@ export default function LabOrderDetailPage({
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [completing, setCompleting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string; name: string } | null>(null);
 
   // Form input state per item: itemId -> { resultValue, flag }
   const [itemForms, setItemForms] = useState<
     Record<string, { resultValue: string; flag: 'NORMAL' | 'HIGH' | 'LOW' | '' }>
   >({});
   const [savingItem, setSavingItem] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const canEdit = currentUser?.role === 'LAB' || currentUser?.role === 'ADMIN';
 
   const loadOrder = async () => {
     setLoading(true);
@@ -207,9 +219,14 @@ export default function LabOrderDetailPage({
             <span className="text-xs font-mono font-bold text-slate-700">
               {receiptNo}
             </span>
+            {!canEdit && (
+              <span className="text-[11px] px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
+                Read-Only (Front Desk) / للقراءة فقط
+              </span>
+            )}
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mt-1">
-            {t('enterResults')} — {order.patient.name}
+            {canEdit ? t('enterResults') : t('viewDetails')} — {order.patient.name}
           </h1>
         </div>
 
@@ -228,7 +245,7 @@ export default function LabOrderDetailPage({
           >
             🖨️ {tCommon('print')} (80mm)
           </Link>
-          {!isCompleted && (
+          {canEdit && !isCompleted && (
             <button
               onClick={handleCompleteOrder}
               disabled={completing}
@@ -239,6 +256,14 @@ export default function LabOrderDetailPage({
           )}
         </div>
       </div>
+
+      {/* Role notice for Front Desk */}
+      {!canEdit && (
+        <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-900 text-xs rounded-lg flex items-center gap-2">
+          <span className="text-base">ℹ️</span>
+          <span>{t('readOnlyNotice')}</span>
+        </div>
+      )}
 
       {/* Notifications */}
       {error && (
@@ -327,9 +352,9 @@ export default function LabOrderDetailPage({
                 <th className="px-4 py-3 text-start">Code / {t('testName')}</th>
                 <th className="px-4 py-3 text-start">{t('referenceRange')}</th>
                 <th className="px-4 py-3 text-start">{t('unit')}</th>
-                <th className="px-4 py-3 text-start">{t('resultValue')} *</th>
+                <th className="px-4 py-3 text-start">{t('resultValue')} {canEdit && '*'}</th>
                 <th className="px-4 py-3 text-start">{t('flag')}</th>
-                <th className="px-4 py-3 text-end">{tCommon('actions')}</th>
+                {canEdit && <th className="px-4 py-3 text-end">{tCommon('actions')}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -361,53 +386,86 @@ export default function LabOrderDetailPage({
                       {item.test.unit || '—'}
                     </td>
 
-                    {/* Result Value Input */}
+                    {/* Result Value */}
                     <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={form.resultValue}
-                        onChange={(e) =>
-                          handleItemChange(item.id, 'resultValue', e.target.value)
-                        }
-                        placeholder="e.g. 95"
-                        className="w-36 px-2.5 py-1.5 border border-slate-300 rounded text-sm font-semibold focus:outline-none focus:ring-teal-500"
-                      />
+                      {canEdit ? (
+                        <input
+                          type="text"
+                          value={form.resultValue}
+                          onChange={(e) =>
+                            handleItemChange(item.id, 'resultValue', e.target.value)
+                          }
+                          placeholder="e.g. 95"
+                          className="w-36 px-2.5 py-1.5 border border-slate-300 rounded text-sm font-semibold focus:outline-none focus:ring-teal-500"
+                        />
+                      ) : (
+                        <span className="font-mono font-bold text-sm text-slate-900">
+                          {item.resultValue || (
+                            <span className="text-slate-400 font-normal italic">
+                              Pending / قيد الانتظار
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </td>
 
-                    {/* Flag Dropdown */}
+                    {/* Flag */}
                     <td className="px-4 py-3">
-                      <select
-                        value={form.flag}
-                        onChange={(e) =>
-                          handleItemChange(item.id, 'flag', e.target.value)
-                        }
-                        className={`px-2 py-1.5 border rounded text-xs font-semibold focus:outline-none ${
-                          form.flag === 'HIGH'
-                            ? 'bg-rose-50 text-rose-700 border-rose-300'
-                            : form.flag === 'LOW'
-                            ? 'bg-amber-50 text-amber-700 border-amber-300'
-                            : form.flag === 'NORMAL'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                            : 'bg-white text-slate-700 border-slate-300'
-                        }`}
-                      >
-                        <option value="">— {t('flag')} —</option>
-                        <option value="NORMAL">{t('flagNormal')}</option>
-                        <option value="HIGH">{t('flagHigh')}</option>
-                        <option value="LOW">{t('flagLow')}</option>
-                      </select>
+                      {canEdit ? (
+                        <select
+                          value={form.flag}
+                          onChange={(e) =>
+                            handleItemChange(item.id, 'flag', e.target.value)
+                          }
+                          className={`px-2 py-1.5 border rounded text-xs font-semibold focus:outline-none ${
+                            form.flag === 'HIGH'
+                              ? 'bg-rose-50 text-rose-700 border-rose-300'
+                              : form.flag === 'LOW'
+                              ? 'bg-amber-50 text-amber-700 border-amber-300'
+                              : form.flag === 'NORMAL'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                              : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <option value="">— {t('flag')} —</option>
+                          <option value="NORMAL">{t('flagNormal')}</option>
+                          <option value="HIGH">{t('flagHigh')}</option>
+                          <option value="LOW">{t('flagLow')}</option>
+                        </select>
+                      ) : (
+                        <>
+                          {item.flag === 'NORMAL' && (
+                            <span className="px-2 py-0.5 text-xs font-bold text-emerald-800 bg-emerald-50 rounded border border-emerald-200">
+                              NORMAL
+                            </span>
+                          )}
+                          {item.flag === 'HIGH' && (
+                            <span className="px-2 py-0.5 text-xs font-bold text-rose-800 bg-rose-50 rounded border border-rose-200">
+                              ▲ HIGH
+                            </span>
+                          )}
+                          {item.flag === 'LOW' && (
+                            <span className="px-2 py-0.5 text-xs font-bold text-amber-800 bg-amber-50 rounded border border-amber-200">
+                              ▼ LOW
+                            </span>
+                          )}
+                          {!item.flag && <span className="text-slate-400">—</span>}
+                        </>
+                      )}
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3 text-end">
-                      <button
-                        onClick={() => handleSaveResult(item.id)}
-                        disabled={isSaving}
-                        className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-medium shadow-xs disabled:opacity-50"
-                      >
-                        {isSaving ? tCommon('loading') : t('saveResult')}
-                      </button>
-                    </td>
+                    {canEdit && (
+                      <td className="px-4 py-3 text-end">
+                        <button
+                          onClick={() => handleSaveResult(item.id)}
+                          disabled={isSaving}
+                          className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-medium shadow-xs disabled:opacity-50"
+                        >
+                          {isSaving ? tCommon('loading') : t('saveResult')}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

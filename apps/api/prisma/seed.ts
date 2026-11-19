@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding initial data...');
 
-  // 1. Admin staff account
+  // 1. Staff accounts (Admin, Front Desk, Lab)
   const adminPasswordHash = await bcrypt.hash('Admin@123456', 10);
   const admin = await prisma.staffUser.upsert({
     where: { username: 'admin' },
@@ -20,6 +20,38 @@ async function main() {
     },
   });
   console.log(`Admin user ensured: ${admin.username} (${admin.id})`);
+
+  const frontdeskPasswordHash = await bcrypt.hash('Staff@123456', 10);
+  const frontdesk = await prisma.staffUser.upsert({
+    where: { username: 'frontdesk' },
+    update: {},
+    create: {
+      name: 'Front Desk Officer',
+      username: 'frontdesk',
+      passwordHash: frontdeskPasswordHash,
+      role: StaffRole.FRONT_DESK,
+      active: true,
+    },
+  });
+  console.log(`Front desk user ensured: ${frontdesk.username} (${frontdesk.id})`);
+
+  const labPasswordHash = await bcrypt.hash('Lab@123456', 10);
+  const lab = await prisma.staffUser.upsert({
+    where: { username: 'lab' },
+    update: {
+      passwordHash: labPasswordHash,
+      role: StaffRole.LAB,
+      active: true,
+    },
+    create: {
+      name: 'Lab Specialist',
+      username: 'lab',
+      passwordHash: labPasswordHash,
+      role: StaffRole.LAB,
+      active: true,
+    },
+  });
+  console.log(`Lab user ensured: ${lab.username} (${lab.id})`);
 
   // 2. Specializations
   const generalMed = await prisma.specialization.upsert({

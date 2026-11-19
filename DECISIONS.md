@@ -74,3 +74,35 @@
 - **Alternatives Considered:**
   1. Allowing partial completion: rejected per specification Section 7.3.
 - **Consequences:** Ensures only complete, verified diagnostic results reach the portal while preserving full accountability for post-verification amendments.
+
+## DECISION-008: Strict Role-Based Separation & UI Enforcement for Front Desk vs Laboratory Staff
+
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:** The system roles require clear separation of duties: Front Desk staff handle patient intake, appointments, receipt printing, and result viewing/printing for patients, but must NEVER edit test results or complete lab orders. Laboratory staff handle order intake and complete result entry/management, but must NOT book doctor appointments.
+- **Decision:** Enforced role separation at both API and UI levels:
+  1. **API Layer:** `PUT /lab-orders/:id/items/:itemId/result` and `POST /lab-orders/:id/complete` strictly restricted to `LAB` and `ADMIN` via `@Roles(Role.LAB, Role.ADMIN)` guard.
+  2. **Staff Web UI - Lab Order Details (`/dashboard/lab/[id]`):** Evaluates `currentUser.role`. Front Desk users see a read-only table with result values, reference ranges, and flags with an informational banner, hiding all input fields, save buttons, and order finalization controls. A "Print Results" button (`/print/results/[id]`) is provided for both roles.
+  3. **Staff Web UI - Front Desk (`/dashboard/front-desk`):** Detects `LAB` users and disables/hides the "Book Doctor Appointment" tab, defaulting them directly to the "Book Lab Tests" tab with an informational note.
+  4. **Staff Web UI - Navigation & Dashboard:** Dynamic role-aware navigation links and dashboard cards ensure each staff member only accesses authorized operational flows.
+- **Alternatives Considered:**
+  1. Single shared booking interface with unrestricted tabs: rejected as it violates clinic operational protocols and audit compliance.
+- **Consequences:** Front desk staff can safely distribute printed results to patients without risk of accidental data mutation, while lab staff have dedicated result workflows.
+
+## DECISION-009: Correct Laboratory Booking and Receipt Permissions for Lab Staff
+
+- **Date:** 2026-11-20
+- **Status:** Accepted
+- **Context:** The role separation requirement allows Laboratory staff to book lab tests and print lab receipts, while Front Desk staff may view and print completed results but never enter or edit them.
+- **Decision:** Added `LAB` to the `POST /lab-orders` and `GET /lab-orders/:id/receipt` role guards. Result entry and completion remain restricted to `LAB` and `ADMIN`. The laboratory order list now derives edit controls from the live staff role and presents Front Desk users with a "View Details" action rather than an "Enter Results" action.
+- **Alternatives Considered:** Relying only on UI labels or leaving booking hidden from the API was rejected; each operational action must be enforced server-side, and role-specific UI labels must match the enforced permissions.
+- **Consequences:** Laboratory staff can create lab orders and print their receipts, Front Desk staff remain read-only for results, and neither UI state nor stale labels imply permissions that the API will not allow.
+
+## DECISION-010: Patient Lookup and Registration for Laboratory Staff
+
+- **Date:** 2026-11-20
+- **Status:** Accepted
+- **Context:** Laboratory staff must be able to search existing patients and register a patient before booking a laboratory order, but must remain unable to book or manage doctor appointments.
+- **Decision:** Added `LAB` permission to patient search, patient detail, and patient registration endpoints. Patient updates remain restricted to `FRONT_DESK` and `ADMIN`. The Staff Web navigation exposes the shared patient/lab booking page to `LAB`, while the page forces the lab booking tab and hides appointment controls and portal credential reissue actions.
+- **Alternatives Considered:** Granting the entire Front Desk role to Lab staff was rejected because that would expose appointment workflows. A separate patient-only page was unnecessary because the existing Front Desk page already provides shared patient search/registration and lab booking behavior.
+- **Consequences:** Laboratory staff can find or register patients and book lab tests; doctor appointments and patient contact edits remain outside their permissions.

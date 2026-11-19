@@ -80,7 +80,7 @@ export class LabController {
   // ===================== LAB ORDERS =====================
 
   @Post('lab-orders')
-  @Roles(StaffRole.FRONT_DESK, StaffRole.ADMIN)
+  @Roles(StaffRole.FRONT_DESK, StaffRole.LAB, StaffRole.ADMIN)
   @ApiOperation({
     summary:
       'Book a lab order for a patient and auto-generate portal account if needed',
@@ -111,7 +111,7 @@ export class LabController {
   }
 
   @Get('lab-orders/:id/receipt')
-  @Roles(StaffRole.FRONT_DESK, StaffRole.ADMIN)
+  @Roles(StaffRole.FRONT_DESK, StaffRole.LAB, StaffRole.ADMIN)
   @ApiOperation({ summary: 'Get 80mm lab receipt data' })
   getLabOrderReceipt(@Param('id') id: string) {
     return this.labService.getLabOrderReceipt(id);

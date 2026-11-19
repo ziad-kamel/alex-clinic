@@ -131,6 +131,8 @@
     "viewDetails": "View Details",
     "saveResult": "Save Result",
     "printResults": "Print Results Report",
+    "readOnlyNotice": "Read-Only View: Results can be viewed and printed. Entering or editing results is restricted to Laboratory staff.",
+    "labStaffBookingNotice": "Doctor appointment booking is restricted to Front Desk staff.",
     "bilingualLabReceipt": "Lab Order Receipt / إيصال طلب تحاليل",
     "bilingualTests": "Requested Tests / التحاليل المطلوبة",
     "bilingualPortalAccess": "Online Portal Access / بوابة نتائج التحاليل",

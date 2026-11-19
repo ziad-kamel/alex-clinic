@@ -53,8 +53,27 @@ export default function FrontDeskPage() {
   const tCommon = useTranslations('common');
   const locale = useLocale();
 
+  // Current user role
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string; name: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const isLabUser = currentUser?.role === 'LAB';
+
   // Active Booking Tab: 'APPOINTMENT' | 'LAB'
   const [activeTab, setActiveTab] = useState<'APPOINTMENT' | 'LAB'>('APPOINTMENT');
+
+  // If LAB user, force to LAB tab
+  useEffect(() => {
+    if (isLabUser) setActiveTab('LAB');
+  }, [isLabUser]);
 
   // Patients Search & Filter State
   const [searchName, setSearchName] = useState('');
@@ -584,22 +603,22 @@ export default function FrontDeskPage() {
                 </button>
               </div>
 
-              {/* Portal Credentials Reissue Action */}
-              <div className="pt-2 border-t border-teal-200 flex items-center justify-between">
-                <span className="text-xs text-teal-900">
-                  Patient Portal / بوابة المريض
-                </span>
-                <button
-                  onClick={handleReissueCredentials}
-                  disabled={reissuing}
-                  className="text-xs px-2.5 py-1 bg-white border border-teal-300 text-teal-800 font-medium rounded hover:bg-teal-100 disabled:opacity-50"
-                >
-                  {reissuing ? tCommon('loading') : `🔑 ${tLab('reissueCredentials')}`}
-                </button>
-              </div>
+              {!isLabUser && (
+                <div className="pt-2 border-t border-teal-200 flex items-center justify-between">
+                  <span className="text-xs text-teal-900">
+                    Patient Portal / بوابة المريض
+                  </span>
+                  <button
+                    onClick={handleReissueCredentials}
+                    disabled={reissuing}
+                    className="text-xs px-2.5 py-1 bg-white border border-teal-300 text-teal-800 font-medium rounded hover:bg-teal-100 disabled:opacity-50"
+                  >
+                    {reissuing ? tCommon('loading') : `🔑 ${tLab('reissueCredentials')}`}
+                  </button>
+                </div>
+              )}
 
-              {/* Reissued Credentials Alert */}
-              {reissuedCredentials && (
+              {!isLabUser && reissuedCredentials && (
                 <div className="p-3 bg-white border border-teal-400 rounded text-xs space-y-1">
                   <div className="font-bold text-teal-800">✓ {tLab('reissuedSuccess')}</div>
                   <div>User ID / اسم المستخدم: <strong className="font-mono">{reissuedCredentials.portalUserId}</strong></div>
@@ -616,17 +635,19 @@ export default function FrontDeskPage() {
           <div>
             {/* Booking Mode Tabs */}
             <div className="flex border-b border-slate-200 mb-5 space-x-4 rtl:space-x-reverse">
-              <button
-                type="button"
-                onClick={() => setActiveTab('APPOINTMENT')}
-                className={`pb-2.5 px-2 text-sm font-bold border-b-2 transition-colors ${
-                  activeTab === 'APPOINTMENT'
-                    ? 'border-teal-600 text-teal-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                🩺 {t('bookAppointmentTitle')}
-              </button>
+              {!isLabUser && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('APPOINTMENT')}
+                  className={`pb-2.5 px-2 text-sm font-bold border-b-2 transition-colors ${
+                    activeTab === 'APPOINTMENT'
+                      ? 'border-teal-600 text-teal-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  🩺 {t('bookAppointmentTitle')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setActiveTab('LAB')}
@@ -639,6 +660,14 @@ export default function FrontDeskPage() {
                 🔬 {tLab('bookLabOrder')}
               </button>
             </div>
+
+            {/* LAB user notice */}
+            {isLabUser && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-lg flex items-center gap-2">
+                <span className="text-base">ℹ️</span>
+                <span>{tLab('labStaffBookingNotice')}</span>
+              </div>
+            )}
 
             {/* TAB 1: DOCTOR APPOINTMENT BOOKING */}
             {activeTab === 'APPOINTMENT' && (
@@ -916,7 +945,7 @@ export default function FrontDeskPage() {
       </div>
 
       {/* Today's Appointments Table */}
-      <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+      {!isLabUser && <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
           <h2 className="text-lg font-bold text-slate-800">
             {t('todayAppointments')}
@@ -1011,7 +1040,7 @@ export default function FrontDeskPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

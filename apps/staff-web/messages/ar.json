@@ -131,6 +131,8 @@
     "viewDetails": "عرض التفاصيل",
     "saveResult": "حفظ النتيجة",
     "printResults": "طباعة تقرير النتائج",
+    "readOnlyNotice": "عرض للقراءة فقط: يمكنك استعراض النتائج وطباعتها. إدخال وتعديل النتائج مقتصر على فريق المختبر.",
+    "labStaffBookingNotice": "حجز مواعيد الأطباء مقتصر على موظفي الاستقبال.",
     "bilingualLabReceipt": "Lab Order Receipt / إيصال طلب تحاليل",
     "bilingualTests": "Requested Tests / التحاليل المطلوبة",
     "bilingualPortalAccess": "Online Portal Access / بوابة نتائج التحاليل",

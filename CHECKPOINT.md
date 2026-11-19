@@ -1,8 +1,8 @@
 # PROJECT PROGRESS CHECKPOINT & AGENT CONTINUATION GUIDE
 
-> **Last Updated:** 2026-11-19
+> **Last Updated:** 2026-11-20
 > **Specification Reference:** `clinic-system-dev-spec.md` (Single source of truth)
-> **Active Branch:** `main` (clean working tree)
+> **Active Branch:** `main`
 
 ---
 
@@ -46,10 +46,30 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [x] **Lab Order Booking & Account Generation:** (`POST /api/lab-orders`) transactional booking of multiple tests. If patient lacks a portal account, auto-generates 8-char unambiguous ID, 10-char password, bcrypt hash, and queues `ACCOUNT_UPSERT` in `sync_outbox`. Subsequent orders reuse the account and return null password.
 - [x] **80mm Bilingual Lab Receipt:** (`/print/lab/:id`) thermal receipt displaying clinic name, receipt number, patient details, requested tests, portal access URL, portal user ID, and temporary password (only on creation/reissue).
 - [x] **Lab Results Entry Interface:** (`/dashboard/lab` & `/dashboard/lab/[id]`) filtering by status (`BOOKED`, `IN_PROGRESS`, `COMPLETED`), individual test result value input and flags (`NORMAL`, `HIGH`, `LOW`).
+- [x] **Strict Role-Based UI & Access Enforcement:**
+  - `FRONT_DESK`: Can register/search patients, book doctor appointments and lab tests, view lab orders/results read-only, and print receipts/reports. CANNOT enter/edit results or complete orders (API returns 403).
+  - `LAB`: Can search/view and register patients, book lab tests, and enter/edit results and complete orders. CANNOT update patient contact details, reissue portal credentials, or book/manage doctor appointments.
+  - `ADMIN`: Full access to all operations across clinic modules.
+- [x] **Print Patient Test Results Report:** (`/print/results/:id`) full A4 printable diagnostic report with clinic header, patient details, test results table, reference ranges, flags, and auto-print support.
 - [x] **Order Completion & Guard:** (`POST /api/lab-orders/:id/complete`) strictly requires all test items to have results. Transitions status to `COMPLETED` and queues `RESULT_UPSERT` in `sync_outbox`.
 - [x] **Audited Post-Completion Edits:** Allowed for `LAB` and `ADMIN`, records `audit_log` entry with before/after values and queues updated `RESULT_UPSERT` in `sync_outbox`.
+- [x] **Audit Log Endpoint:** (`GET /api/audit-log`) added for `ADMIN` to query and inspect audit trail entries including before/after values.
 - [x] **Portal Credential Reissue:** (`POST /api/patients/:id/portal-account/reissue`) generates new password, updates local hash, queues `ACCOUNT_UPSERT`, and logs to audit trail.
 - [x] **Automated Acceptance Tests:** (`apps/api/src/lab/__tests__/lab.service.spec.ts`) 100% passing — validates account creation/reuse, bcrypt hash security, completeness guard, and post-completion audit logging.
+
+### Phase 2 Role-Separation Correction (2026-11-20)
+- [x] Confirmed live `frontdesk` account role is `FRONT_DESK`; live `lab` account role is `LAB`.
+- [x] Confirmed `PUT /lab-orders/:id/items/:itemId/result` returns 403 for Front Desk.
+- [x] Corrected `POST /lab-orders` and lab receipt access to include Laboratory staff.
+- [x] Updated laboratory order list labels so Front Desk users see read-only result actions.
+
+### Laboratory Patient Access (2026-11-20)
+- [x] Laboratory staff can search and view patient profiles.
+- [x] Laboratory staff can register new patients.
+- [x] Laboratory staff can use the shared patient/lab workflow; appointment booking and appointment list are hidden.
+- [x] Patient contact updates, credential reissue, and doctor appointments remain restricted to Front Desk and/or Admin.
+- [x] API role checks verified: Laboratory patient search/registration allowed; patient updates and doctor appointment booking return 403 for Laboratory accounts.
+- [x] API role checks verified: Front Desk result edits return 403; Laboratory lab booking and lab receipt access allowed.
 
 ---
 
@@ -95,3 +115,4 @@ The next agent or turn MUST begin **Phase 3: Portal and Sync** per `clinic-syste
 ### Credentials for Testing:
 - **Admin:** `admin` / `Admin@123456`
 - **Front Desk:** `frontdesk` / `Staff@123456`
+- **Laboratory:** `lab` / `Lab@123456`

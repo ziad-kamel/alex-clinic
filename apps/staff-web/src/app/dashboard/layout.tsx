@@ -52,12 +52,14 @@ export default async function DashboardLayout({
           </Link>
 
           <nav className="flex space-x-2 rtl:space-x-reverse text-sm font-medium">
-            <Link
-              href="/dashboard/front-desk"
-              className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
-            >
-              {t('frontDesk')}
-            </Link>
+            {(user.role === 'ADMIN' || user.role === 'FRONT_DESK' || user.role === 'LAB') && (
+              <Link
+                href="/dashboard/front-desk"
+                className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+              >
+                {t('frontDesk')}
+              </Link>
+            )}
 
             {(user.role === 'ADMIN' || user.role === 'DOCTOR') && (
               <span className="px-3 py-1.5 rounded-md text-slate-400 cursor-not-allowed">
@@ -65,7 +67,7 @@ export default async function DashboardLayout({
               </span>
             )}
 
-            {(user.role === 'ADMIN' || user.role === 'LAB') && (
+            {(user.role === 'ADMIN' || user.role === 'LAB' || user.role === 'FRONT_DESK') && (
               <Link
                 href="/dashboard/lab"
                 className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"

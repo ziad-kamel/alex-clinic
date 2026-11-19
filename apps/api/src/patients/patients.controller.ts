@@ -15,11 +15,11 @@ import { StaffRole } from '@prisma/client';
 
 @ApiTags('Patients')
 @Controller('patients')
-@Roles(StaffRole.FRONT_DESK, StaffRole.ADMIN)
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   @Get()
+  @Roles(StaffRole.FRONT_DESK, StaffRole.LAB, StaffRole.ADMIN)
   @ApiOperation({ summary: 'Search and paginate patients by query, name, and/or phone' })
   search(
     @Query('query') query?: string,
@@ -38,18 +38,21 @@ export class PatientsController {
   }
 
   @Get(':id')
+  @Roles(StaffRole.FRONT_DESK, StaffRole.LAB, StaffRole.ADMIN)
   @ApiOperation({ summary: 'Get patient profile and history' })
   findOne(@Param('id') id: string) {
     return this.patientsService.findOne(id);
   }
 
   @Post()
+  @Roles(StaffRole.FRONT_DESK, StaffRole.LAB, StaffRole.ADMIN)
   @ApiOperation({ summary: 'Register a new patient' })
   create(@Body() dto: CreatePatientDto) {
     return this.patientsService.create(dto);
   }
 
   @Patch(':id')
+  @Roles(StaffRole.FRONT_DESK, StaffRole.ADMIN)
   @ApiOperation({ summary: 'Update patient contact details' })
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
     return this.patientsService.update(id, dto);

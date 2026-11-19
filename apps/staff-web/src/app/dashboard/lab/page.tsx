@@ -36,11 +36,24 @@ export default function LabDashboardPage() {
   const locale = useLocale();
 
   const [orders, setOrders] = useState<LabOrder[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [dateFilter, setDateFilter] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user) setCurrentUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const canManageResults =
+    currentUser?.role === 'LAB' || currentUser?.role === 'ADMIN';
 
   const loadOrders = async (status = statusFilter, date = dateFilter) => {
     setLoading(true);
@@ -199,7 +212,9 @@ export default function LabDashboardPage() {
                           href={`/dashboard/lab/${order.id}`}
                           className="inline-block text-xs px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded font-medium shadow-xs"
                         >
-                          {order.status === 'COMPLETED' ? t('viewDetails') : t('enterResults')}
+                          {canManageResults
+                            ? (order.status === 'COMPLETED' ? t('viewDetails') : t('enterResults'))
+                            : t('viewDetails')}
                         </Link>
                         {order.status === 'COMPLETED' && (
                           <Link
