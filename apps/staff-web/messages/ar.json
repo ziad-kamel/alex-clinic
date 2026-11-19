@@ -130,6 +130,7 @@
     "noOrders": "لا توجد طلبات تحاليل مسجلة.",
     "viewDetails": "عرض التفاصيل",
     "saveResult": "حفظ النتيجة",
+    "printResults": "طباعة تقرير النتائج",
     "bilingualLabReceipt": "Lab Order Receipt / إيصال طلب تحاليل",
     "bilingualTests": "Requested Tests / التحاليل المطلوبة",
     "bilingualPortalAccess": "Online Portal Access / بوابة نتائج التحاليل",

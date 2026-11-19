@@ -201,6 +201,15 @@ export default function LabDashboardPage() {
                         >
                           {order.status === 'COMPLETED' ? t('viewDetails') : t('enterResults')}
                         </Link>
+                        {order.status === 'COMPLETED' && (
+                          <Link
+                            href={`/print/results/${order.id}`}
+                            target="_blank"
+                            className="inline-block text-xs px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded font-medium"
+                          >
+                            📄 {t('printResults')}
+                          </Link>
+                        )}
                         <Link
                           href={`/print/lab/${order.id}`}
                           target="_blank"

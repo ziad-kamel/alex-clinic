@@ -213,7 +213,14 @@ export default function LabOrderDetailPage({
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/print/results/${order.id}`}
+            target="_blank"
+            className="px-3.5 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded shadow-xs inline-flex items-center gap-1.5"
+          >
+            📄 {t('printResults')}
+          </Link>
           <Link
             href={`/print/lab/${order.id}`}
             target="_blank"

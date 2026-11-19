@@ -65,6 +65,18 @@ export class LabController {
     return this.labService.deleteTest(id);
   }
 
+  // ===================== AUDIT LOG =====================
+
+  @Get('audit-log')
+  @Roles(StaffRole.ADMIN)
+  @ApiOperation({ summary: 'Get audit log entries including before and after values' })
+  getAuditLogs(
+    @Query('action') action?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.labService.getAuditLogs(action, limit);
+  }
+
   // ===================== LAB ORDERS =====================
 
   @Post('lab-orders')

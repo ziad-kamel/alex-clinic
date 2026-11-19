@@ -96,6 +96,16 @@ export class LabService {
     });
   }
 
+  // ===================== AUDIT LOGS =====================
+
+  async getAuditLogs(action?: string, limit = 50) {
+    return this.prisma.auditLog.findMany({
+      where: action ? { action } : {},
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(100, Math.max(1, Number(limit) || 50)),
+    });
+  }
+
   // ===================== LAB ORDERS & CREDENTIALS =====================
 
   async bookLabOrder(dto: BookLabOrderDto, staffUserId: string) {
