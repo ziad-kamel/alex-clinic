@@ -1,0 +1,56 @@
+{
+  "common": {
+    "clinicName": "Alex Clinic",
+    "language": "Language",
+    "english": "English",
+    "arabic": "العربية",
+    "loading": "Loading...",
+    "logout": "Sign out",
+    "backToResults": "Back to results",
+    "changePassword": "Change password",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "login": {
+    "title": "Patient results portal",
+    "subtitle": "Sign in with the portal ID and password printed by the clinic.",
+    "userId": "Portal user ID",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalid": "The user ID or password is incorrect.",
+    "rateLimited": "Too many sign-in attempts. Try again later.",
+    "networkError": "Unable to sign in right now. Please try again."
+  },
+  "results": {
+    "title": "Your laboratory results",
+    "welcome": "Welcome, {name}",
+    "patientName": "Patient name",
+    "empty": "No completed results are available yet.",
+    "order": "Order",
+    "completed": "Completed",
+    "tests": "Tests",
+    "view": "View report",
+    "download": "Download A4 PDF",
+    "test": "Test",
+    "result": "Result",
+    "unit": "Unit",
+    "referenceRange": "Reference range",
+    "flag": "Flag",
+    "normal": "Normal",
+    "high": "High",
+    "low": "Low",
+    "pendingSync": "Your results will appear here after the clinic completes and synchronizes them."
+  },
+  "password": {
+    "title": "Change your password",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "submit": "Update password",
+    "success": "Your password was changed.",
+    "mismatch": "The new passwords do not match.",
+    "invalid": "Enter your current password and a new password with at least 8 characters.",
+    "failed": "Unable to change your password. Check your current password and try again.",
+    "required": "Change your password to continue to your results."
+  }
+}

@@ -30,6 +30,7 @@
     "frontDesk": "Front Desk",
     "doctorQueue": "Doctor Queue",
     "laboratory": "Laboratory",
+    "syncOutbox": "Cloud Sync",
     "admin": "Admin",
     "appointments": "Appointments",
     "registerPatient": "Register Patient"
@@ -140,5 +141,27 @@
     "bilingualUserId": "User ID / اسم المستخدم",
     "bilingualPassword": "Password / كلمة المرور",
     "bilingualNotice": "Results will be uploaded to your portal as soon as ready."
+  },
+  "sync": {
+    "title": "Cloud synchronization outbox",
+    "description": "Review account and completed-result synchronization jobs.",
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "type": "Type",
+    "attempts": "Attempts",
+    "lastError": "Last error",
+    "createdAt": "Created",
+    "nextAttempt": "Next attempt",
+    "noRows": "No synchronization jobs found.",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "retrySuccess": "Job queued for retry.",
+    "loadError": "Unable to load synchronization jobs.",
+    "retryError": "Unable to retry this job.",
+    "notAuthorized": "Administrator access is required.",
+    "page": "Page",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

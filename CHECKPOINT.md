@@ -12,7 +12,7 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - **Local Clinic Network:** NestJS API (`apps/api`) + Next.js 15 App Router (`apps/staff-web`).
 - **Database:** Supabase PostgreSQL instance (project ref: `tuzaatbdyyqyfpwvcyfo`).
   - Clinic operational tables are in `public` schema.
-  - Cloud Patient Portal will use `portal` schema/models (Phase 3).
+  - Patient Portal models are isolated in the PostgreSQL `portal` schema; its initial migration was applied and verified on 2026-11-20.
 - **Core Conventions:**
   - All timestamps stored in UTC (`timestamptz`), displayed in `CLINIC_TIMEZONE` (`Africa/Cairo`).
   - Western digits (`0-9`) used uniformly across English and Arabic interfaces.
@@ -73,24 +73,35 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 
 ---
 
-## 3. Next Phase: Phase 3 — Patient Portal & Sync
+## 3. Active Phase: Phase 3 — Patient Portal & Sync
 
-The next agent or turn MUST begin **Phase 3: Portal and Sync** per `clinic-system-dev-spec.md` Section 12:
+**Implementation is complete; final runtime and external acceptance checks remain.** The portal, API worker/receivers, and admin outbox monitor are implemented, and the Supabase migration is applied. Local sync for a completed result has been verified in the Portal database. The local Portal was missing `CLINIC_TIMEZONE`; `apps/portal/.env.local` now sets it to `Africa/Cairo` (ignored local configuration), but the Portal must be restarted and the results page rechecked. No live Vercel-to-Supabase sync or end-to-end PDF test has been performed. Do not mark Phase 3 complete until the remaining acceptance checks pass.
 
-### Key Tasks:
-1. **Patient Portal Web App (`apps/portal/`):**
-   - Next.js App Router (deployed to Vercel).
-   - Custom session using signed JWT (`jose`) in `httpOnly` cookie.
-   - Portal login with rate limiting & lockout (15 minutes after 5 failed attempts).
-   - Results list & detail view (A4 layout).
-   - A4 PDF generation & download for each completed order.
-   - Change password screen.
-2. **Sync Outbox & Worker:**
-   - Background sync worker running every 30 seconds (`@nestjs/schedule`).
-   - Push `PENDING` outbox rows via HMAC-SHA256 signed HTTPS requests (`X-Timestamp`, `X-Signature`) using `SYNC_SECRET`.
-   - Portal sync receivers: `POST /api/sync/accounts` and `POST /api/sync/results` with idempotent upserts.
-3. **Admin Outbox Monitor:**
-   - View pending/sent/failed outbox rows and retry failed syncs.
+### Implemented
+
+- [x] Next.js patient portal on port `3002`, with English/Arabic UI, signed 8-hour `httpOnly` sessions, password change, and generic login errors.
+- [x] Database-backed IP throttling and per-account 15-minute lockout after five failed attempts.
+- [x] Results list/detail and patient-scoped A4 PDF download; Noto Sans Arabic fonts are bundled and traced for the PDF route.
+- [x] Signed `POST /api/sync/accounts` and `POST /api/sync/results` receivers with schema validation and idempotent upserts.
+- [x] NestJS 30-second outbox worker with HMAC signing, timeout, FIFO retry handling, exponential backoff, and configurable attempt limit.
+- [x] Admin-only outbox monitor and failed-row retry endpoint. Outbox responses omit payloads.
+- [x] RLS and privilege revocations included in the initial `portal` schema migration.
+- [x] Focused tests cover exact-body signature validation, expired signatures, patient-scoped result queries, worker signing/retry, and FIFO behavior.
+- [x] README Vercel and database setup instructions; decisions recorded in `DECISIONS.md`.
+
+### Verification and Remaining Acceptance Checks
+
+- [x] Shared package build.
+- [x] API, portal, and Staff Web TypeScript checks.
+- [x] Focused sync and portal security Jest tests.
+- [x] API and portal production builds pass; Staff Web production build also passes with the new security headers.
+- [x] Verified the Arabic font files are present in the PDF route's Next.js serverless trace.
+- [x] Applied `apps/portal/prisma/migrations/20261120004700_init_portal/migration.sql` to the empty `portal` schema using the IPv4 session pooler; marked the migration applied and verified Prisma status, tables, and RLS.
+- [x] Verified a completed result was sent to the local Portal database and the results-page query returns its order.
+- [ ] Restart the local Portal after setting `CLINIC_TIMEZONE` and confirm the patient results page renders.
+- [ ] Configure production secrets and deploy the portal to Vercel.
+- [ ] Verify a completed lab order arrives within about one minute; verify retry recovery while the portal is unreachable.
+- [ ] Verify patient login, password change, result detail, and A4 PDF in the deployed portal.
 
 ---
 
@@ -104,6 +115,11 @@ The next agent or turn MUST begin **Phase 3: Portal and Sync** per `clinic-syste
 - **Staff Web (Port 3000):**
   ```bash
   cmd.exe /c "npm --prefix apps/staff-web run dev"
+  ```
+- **Patient Portal (Port 3002):**
+  ```bash
+  pnpm --filter @clinic/shared run build
+  pnpm --filter @clinic/portal run dev
   ```
 
 ### Running Test Suites

@@ -75,6 +75,15 @@ export default async function DashboardLayout({
                 {t('laboratory')}
               </Link>
             )}
+
+            {user.role === 'ADMIN' && (
+              <Link
+                href="/dashboard/sync"
+                className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+              >
+                {t('syncOutbox')}
+              </Link>
+            )}
           </nav>
         </div>
 

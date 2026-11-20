@@ -36,13 +36,21 @@ export const TestResultFlag = {
 export type TestResultFlag = (typeof TestResultFlag)[keyof typeof TestResultFlag];
 
 // Sync payload schemas (Local API -> Portal)
-export const SyncAccountPayloadSchema = z.object({
-  patientRef: z.string().uuid(),
-  portalUserId: z.string().length(8),
-  passwordHash: z.string(),
-  patientName: z.string().min(1),
-  mustChangePassword: z.boolean().default(false),
-});
+export const SyncAccountPayloadSchema = z
+  .object({
+    patientRef: z.string().uuid(),
+    portalUserId: z.string().regex(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/),
+    passwordHash: z
+      .string()
+      .regex(/^\$2[aby]\$(\d\d)\$.{53}$/)
+      .refine(
+        (hash) => Number(hash.slice(4, 6)) >= 10,
+        'Password hash cost must be at least 10',
+      ),
+    patientName: z.string().min(1),
+    mustChangePassword: z.boolean().default(false),
+  })
+  .strict();
 
 export type SyncAccountPayload = z.infer<typeof SyncAccountPayloadSchema>;
 
@@ -59,9 +67,41 @@ export const SyncResultItemSchema = z.object({
   completedAt: z.string().datetime(),
 });
 
-export const SyncResultsPayloadSchema = z.object({
-  items: z.array(SyncResultItemSchema).min(1),
-});
+export const SyncResultsPayloadSchema = z
+  .object({
+    items: z.array(SyncResultItemSchema).min(1),
+  })
+  .strict()
+  .superRefine(({ items }, ctx) => {
+    const firstItem = items[0];
+    if (!firstItem) return;
+
+    const testRefs = new Set<string>();
+    items.forEach((item, index) => {
+      if (item.patientRef !== firstItem.patientRef) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['items', index, 'patientRef'],
+          message: 'A sync batch must contain results for one patient',
+        });
+      }
+      if (item.orderRef !== firstItem.orderRef) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['items', index, 'orderRef'],
+          message: 'A sync batch must contain results for one order',
+        });
+      }
+      if (testRefs.has(item.testRef)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['items', index, 'testRef'],
+          message: 'A sync batch cannot contain duplicate tests',
+        });
+      }
+      testRefs.add(item.testRef);
+    });
+  });
 
 export type SyncResultsPayload = z.infer<typeof SyncResultsPayloadSchema>;
 

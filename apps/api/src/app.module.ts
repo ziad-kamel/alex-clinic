@@ -8,15 +8,19 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { LabModule } from './lab/lab.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
     PrismaModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     PatientsModule,
     DoctorsModule,
     AppointmentsModule,
     LabModule,
+    SyncModule,
   ],
   providers: [
     {

@@ -2,6 +2,7 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  schemas   = ["portal"]
 }
 
 generator client {
@@ -13,6 +14,8 @@ enum PortalTestFlag {
   NORMAL
   HIGH
   LOW
+
+  @@schema("portal")
 }
 
 model PortalAccount {
@@ -28,8 +31,8 @@ model PortalAccount {
   updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
   results            PortalResult[]
 
-  @@index([userId])
   @@map("portal_accounts")
+  @@schema("portal")
 }
 
 model PortalResult {
@@ -48,6 +51,18 @@ model PortalResult {
   updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
 
   @@unique([orderRef, testRef])
-  @@index([patientRef])
+  @@index([patientRef, completedAt(sort: Desc)])
   @@map("portal_results")
+  @@schema("portal")
+}
+
+model PortalLoginLimit {
+  ipHash          String    @id @map("ip_hash")
+  attempts        Int       @default(0)
+  windowStartedAt DateTime  @default(now()) @map("window_started_at") @db.Timestamptz
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz
+
+  @@index([windowStartedAt])
+  @@map("portal_login_limits")
+  @@schema("portal")
 }

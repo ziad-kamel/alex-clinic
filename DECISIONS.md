@@ -9,7 +9,7 @@
 - **Alternatives Considered:**
   1. Installing local PostgreSQL directly on Windows or Docker Desktop: blocked/skipped due to current machine setup.
   2. Running two separate Supabase projects: viable, but using separate schemas (`public` and `portal`) on one project achieves database-level schema separation with zero overhead.
-- **Consequences:** We use Supabase direct URL (port 5432) for running Prisma migrations and pooled URL (port 6543) for runtime queries. Connection credentials are kept strictly out of git in `.env` files.
+- **Consequences:** Runtime queries use the Supabase transaction pooler (port 6543). Prisma migrations use the session pooler (port 5432) on this IPv4-only network; the project's direct endpoint is IPv6-only here. Connection credentials are kept strictly out of git in `.env` files.
 
 ## DECISION-002: Concurrency-Safe Queue Numbering using Atomic Row Increment & Extended Transaction Timeout
 
@@ -106,3 +106,30 @@
 - **Decision:** Added `LAB` permission to patient search, patient detail, and patient registration endpoints. Patient updates remain restricted to `FRONT_DESK` and `ADMIN`. The Staff Web navigation exposes the shared patient/lab booking page to `LAB`, while the page forces the lab booking tab and hides appointment controls and portal credential reissue actions.
 - **Alternatives Considered:** Granting the entire Front Desk role to Lab staff was rejected because that would expose appointment workflows. A separate patient-only page was unnecessary because the existing Front Desk page already provides shared patient search/registration and lab booking behavior.
 - **Consequences:** Laboratory staff can find or register patients and book lab tests; doctor appointments and patient contact edits remain outside their permissions.
+
+## DECISION-011: Isolated Patient Portal Schema and Signed Outbox Synchronization
+
+- **Date:** 2026-11-20
+- **Status:** Accepted
+- **Context:** The portal requires cloud-hosted accounts and results, while the clinic operational data remains in the existing Supabase PostgreSQL project. Sync must work asynchronously without making local order completion depend on portal availability.
+- **Decision:** Keep portal models in the separate PostgreSQL `portal` schema with a dedicated generated Prisma client. Enable RLS and revoke direct `PUBLIC`, `anon`, and `authenticated` access. The local NestJS worker sends allow-listed outbox payloads every 30 seconds, signs the exact JSON body and timestamp with HMAC-SHA256, and retries with capped exponential backoff. The portal verifies timestamp/signature and performs idempotent upserts. Outbox monitoring omits payloads because account events contain password hashes.
+- **Alternatives Considered:** Storing portal data in the clinic `public` schema was rejected because the portal must not access operational tables. Synchronous portal calls during lab completion were rejected because internet outages must not prevent local work.
+- **Consequences:** The portal accesses only its schema through its private server-side database connection. The initial migration is applied and verified; production secrets and deployment are still required before live cloud synchronization can be verified.
+
+## DECISION-012: Database-Backed Portal Login Throttling and Patient-Scoped Results
+
+- **Date:** 2026-11-20
+- **Status:** Accepted
+- **Context:** Portal authentication runs in serverless instances and must enforce consistent lockout and rate limits across instances while ensuring result pages and PDFs never expose another patient's data.
+- **Decision:** Use an HMAC-hashed IP key in the portal database for a 15-minute request window, with a 20-attempt per-IP ceiling, plus a 15-minute account lock after five failed password attempts. Use a generic invalid-credentials response and equalize the unknown-user bcrypt work. Portal result queries are constructed by a shared helper that always includes the session's patient reference, including detail and PDF requests.
+- **Alternatives Considered:** Per-process memory rate limits were rejected because serverless instances do not share state. Filtering by a URL/order identifier alone was rejected because it permits insecure direct-object access.
+- **Consequences:** Login throttling survives process restarts and result access is ownership-scoped at the database query boundary.
+
+## DECISION-013: A4 Portal PDF and Web Security Headers
+
+- **Date:** 2026-11-20
+- **Status:** Accepted
+- **Context:** Patients need printable English/Arabic lab reports that match the on-screen result, and both web apps require baseline browser security headers.
+- **Decision:** Generate A4 PDFs server-side with `@react-pdf/renderer`, bundle Noto Sans Arabic regular/bold fonts under the OFL license, and include those fonts in the PDF route's serverless output trace. Configure CSP and standard content-type, framing, referrer, and permissions headers for both Next.js apps.
+- **Alternatives Considered:** Browser-side PDF generation was rejected because it would duplicate report formatting and Arabic font handling across clients.
+- **Consequences:** Reports use a consistent server-rendered layout and include Arabic glyph support. PDF and live browser rendering still require deployment verification after the portal database is available.

@@ -30,6 +30,7 @@
     "frontDesk": "الاستقبال",
     "doctorQueue": "طابور العيادة",
     "laboratory": "المختبر والتحاليل",
+    "syncOutbox": "مزامنة السحابة",
     "admin": "الإدارة",
     "appointments": "المواعيد والحجوزات",
     "registerPatient": "تسجيل مريض"
@@ -140,5 +141,27 @@
     "bilingualUserId": "User ID / اسم المستخدم",
     "bilingualPassword": "Password / كلمة المرور",
     "bilingualNotice": "ستكون النتائج متاحة على البوابة فور جاهزيتها."
+  },
+  "sync": {
+    "title": "قائمة مزامنة السحابة",
+    "description": "مراجعة مهام مزامنة الحسابات والنتائج المكتملة.",
+    "status": "الحالة",
+    "allStatuses": "جميع الحالات",
+    "type": "النوع",
+    "attempts": "المحاولات",
+    "lastError": "آخر خطأ",
+    "createdAt": "تاريخ الإنشاء",
+    "nextAttempt": "المحاولة التالية",
+    "noRows": "لا توجد مهام مزامنة.",
+    "refresh": "تحديث",
+    "retry": "إعادة المحاولة",
+    "retrySuccess": "تمت إضافة المهمة إلى قائمة إعادة المحاولة.",
+    "loadError": "تعذر تحميل مهام المزامنة.",
+    "retryError": "تعذرت إعادة محاولة هذه المهمة.",
+    "notAuthorized": "يجب تسجيل الدخول بصلاحيات المدير.",
+    "page": "الصفحة",
+    "of": "من",
+    "previous": "السابق",
+    "next": "التالي"
   }
 }
