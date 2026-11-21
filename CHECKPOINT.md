@@ -1,6 +1,6 @@
 # PROJECT PROGRESS CHECKPOINT & AGENT CONTINUATION GUIDE
 
-> **Last Updated:** 2026-11-20
+> **Last Updated:** 2026-11-21
 > **Specification Reference:** `clinic-system-dev-spec.md` (Single source of truth)
 > **Active Branch:** `main`
 
@@ -115,8 +115,9 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
   - `ADMIN` accesses Doctor Queue, Reports, Sync Outbox, and all clinic operational modules.
 - [x] **Reports Automated Tests:** (`apps/api/src/reports/__tests__/reports.service.spec.ts`) passing with 100% assertion coverage.
 - [x] **E2E Testing Suite (Playwright):** Full automated clinical workflows in `e2e/clinical-workflows.spec.ts` covering booking appointments, receipts, lab ordering, result completion, and queue attendance.
-- [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014` & `DECISION-015` in `DECISIONS.md`.
+- [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014`, `DECISION-015`, and `DECISION-016` in `DECISIONS.md`.
 - [x] **Direct Doctor Linking:** Added `doctorId` foreign key on `staff_users` referencing `doctors.id`. Queue retrieval reliably matches the logged-in doctor account, while administrators have a dropdown selector to view any doctor's queue.
+- [x] **Compilation Structure & Watcher Normalization:** Added `apps/api/nest-cli.json` and scoped `apps/api/tsconfig.json` to prevent TypeScript monorepo root inflation. Solved stale watcher execution so that live dev servers always run the latest build artifacts directly from `dist/`. Live queue retrieval verified for doctor account (`doctor`).
 
 ---
 
