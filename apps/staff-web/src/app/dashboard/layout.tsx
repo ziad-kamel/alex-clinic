@@ -62,9 +62,12 @@ export default async function DashboardLayout({
             )}
 
             {(user.role === 'ADMIN' || user.role === 'DOCTOR') && (
-              <span className="px-3 py-1.5 rounded-md text-slate-400 cursor-not-allowed">
-                {t('doctorQueue')} (Phase 4)
-              </span>
+              <Link
+                href="/dashboard/doctor"
+                className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+              >
+                {t('doctorQueue')}
+              </Link>
             )}
 
             {(user.role === 'ADMIN' || user.role === 'LAB' || user.role === 'FRONT_DESK') && (
@@ -77,12 +80,20 @@ export default async function DashboardLayout({
             )}
 
             {user.role === 'ADMIN' && (
-              <Link
-                href="/dashboard/sync"
-                className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
-              >
-                {t('syncOutbox')}
-              </Link>
+              <>
+                <Link
+                  href="/dashboard/reports"
+                  className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+                >
+                  {t('reports')}
+                </Link>
+                <Link
+                  href="/dashboard/sync"
+                  className="px-3 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-teal-700"
+                >
+                  {t('syncOutbox')}
+                </Link>
+              </>
             )}
           </nav>
         </div>

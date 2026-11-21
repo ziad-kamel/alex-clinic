@@ -7,12 +7,14 @@
     "lint": "pnpm -r run lint",
     "type-check": "pnpm -r run type-check",
     "test": "pnpm -r run test",
+    "test:e2e": "playwright test",
     "dev:api": "pnpm --filter @clinic/api run start:dev",
     "dev:staff": "pnpm --filter @clinic/staff-web run dev",
     "dev:portal": "pnpm --filter @clinic/portal run dev"
   },
   "devDependencies": {
-    "typescript": "^5.7.2",
-    "prettier": "^3.4.2"
+    "@playwright/test": "^1.65.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
   }
 }

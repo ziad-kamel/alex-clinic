@@ -77,19 +77,42 @@ export default async function DashboardPage() {
           </Link>
 
           {/* Doctor Queue Card */}
-          <div className="p-6 border border-slate-200 rounded-lg bg-slate-50 opacity-60">
+          <Link
+            href="/dashboard/doctor"
+            className="group block p-6 border-2 border-slate-200 hover:border-teal-500 rounded-lg bg-slate-50 hover:bg-teal-50 transition-all"
+          >
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-lg text-slate-800">
+              <h3 className="font-bold text-lg text-slate-900 group-hover:text-teal-700">
                 {t('doctorQueue')}
               </h3>
-              <span className="text-xs px-2 py-0.5 bg-slate-200 text-slate-700 rounded">
-                Phase 4
+              <span className="text-xs px-2 py-0.5 bg-teal-600 text-white font-bold rounded">
+                Active (Phase 4)
               </span>
             </div>
-            <p className="text-sm text-slate-500">
-              Daily queue attendance and patient consultation marking.
+            <p className="text-sm text-slate-600">
+              Daily queue attendance, patient consultation marking, and clinic queue tracking.
             </p>
-          </div>
+          </Link>
+
+          {/* Operational Reports Card (Admin) */}
+          {user?.role === 'ADMIN' && (
+            <Link
+              href="/dashboard/reports"
+              className="group block p-6 border-2 border-slate-200 hover:border-teal-500 rounded-lg bg-slate-50 hover:bg-teal-50 transition-all"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-lg text-slate-900 group-hover:text-teal-700">
+                  {t('reports')}
+                </h3>
+                <span className="text-xs px-2 py-0.5 bg-teal-600 text-white font-bold rounded">
+                  Active (Phase 4)
+                </span>
+              </div>
+              <p className="text-sm text-slate-600">
+                Clinic metrics: appointments per doctor per day and daily diagnostic test volume.
+              </p>
+            </Link>
+          )}
         </div>
       </div>
     </div>

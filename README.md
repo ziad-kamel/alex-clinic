@@ -64,6 +64,21 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 - [x] Apply the portal schema migration to Supabase; the portal tables and RLS are verified.
 - [ ] Deploy to Vercel and run live sync/login/PDF acceptance checks. See the deployment instructions below.
 
+---
+
+## Phase 4 Doctor Screens, Reports & Polish Status
+
+- [x] **Doctor Queue Screen (`/dashboard/doctor`):** Authenticated doctors view their daily patient queue in real-time, filtered by date, with consultation attendance marking ("Mark as Seen").
+- [x] **Operational Reports (`/dashboard/reports`):**
+  - Appointments per doctor per day with breakdown by status (seen, booked/waiting, cancelled).
+  - Diagnostic laboratory orders per day with status counts and total tests performed.
+  - Date range filtering (`from`, `to`) and bilingual presentation.
+- [x] **Role Separation & Navigation:**
+  - `DOCTOR` (`doctor` / `Doctor@123456`) accesses Doctor Queue only; Front Desk and Lab workflows are hidden/restricted.
+  - `ADMIN` accesses all clinic operational modules including Reports and Cloud Sync.
+- [x] **Automated Tests:** Unit tests for `ReportsService` passing with 100% test coverage.
+- [x] **E2E Testing Suite:** Playwright end-to-end specifications covering all clinical workflows (`pnpm test:e2e`).
+
 The implementation must not be considered fully acceptance-tested until the deployment checks are complete.
 
 ---

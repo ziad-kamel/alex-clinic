@@ -133,3 +133,18 @@
 - **Decision:** Generate A4 PDFs server-side with `@react-pdf/renderer`, bundle Noto Sans Arabic regular/bold fonts under the OFL license, and include those fonts in the PDF route's serverless output trace. Configure CSP and standard content-type, framing, referrer, and permissions headers for both Next.js apps.
 - **Alternatives Considered:** Browser-side PDF generation was rejected because it would duplicate report formatting and Arabic font handling across clients.
 - **Consequences:** Reports use a consistent server-rendered layout and include Arabic glyph support. PDF and live browser rendering still require deployment verification after the portal database is available.
+
+## DECISION-014: Doctor Queue Attendance & Operational Reporting Architecture
+
+- **Date:** 2026-11-21
+- **Status:** Accepted
+- **Context:** Section 8 and Section 12 require Phase 4 features:
+  1. A dedicated Doctor queue screen allowing authenticated doctors to view their daily assigned queue and mark consultations as "seen".
+  2. Operational clinic reports: appointments per doctor per day, and daily diagnostic test volume.
+- **Decision:**
+  1. **Doctor Queue Mapping:** `getDoctorQueue(doctorUserId, date)` supports resolving the doctor's record by matching the authenticated `StaffUser`'s ID or name against the operational `Doctor` table.
+  2. **Security & Role Boundaries:** `GET /doctor/queue` and `PATCH /appointments/:id/seen` are protected by `@Roles(StaffRole.DOCTOR, StaffRole.ADMIN)`. Other roles receive 403 Forbidden.
+  3. **Reporting Service:** Implemented `ReportsService` in NestJS API (`GET /reports/appointments-per-doctor` and `GET /reports/lab-orders-per-day`), restricted strictly to `ADMIN` staff.
+  4. **Frontend Integration:** Built bilingual UI with RTL support in Next.js Staff Web at `/dashboard/doctor` and `/dashboard/reports`.
+- **Alternatives Considered:** Allowing all roles to access doctor queues or reports was rejected per specification role tables.
+- **Consequences:** Doctors have an isolated, real-time consultation workflow, and administrators have real-time visibility into clinic workload metrics without affecting transaction performance.

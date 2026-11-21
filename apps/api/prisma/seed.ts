@@ -53,6 +53,25 @@ async function main() {
   });
   console.log(`Lab user ensured: ${lab.username} (${lab.id})`);
 
+  const doctorPasswordHash = await bcrypt.hash('Doctor@123456', 10);
+  const doctorUser = await prisma.staffUser.upsert({
+    where: { username: 'doctor' },
+    update: {
+      passwordHash: doctorPasswordHash,
+      role: StaffRole.DOCTOR,
+      active: true,
+    },
+    create: {
+      id: 'd0000000-0000-0000-0000-000000000001',
+      name: 'Dr. Ahmed Mostafa',
+      username: 'doctor',
+      passwordHash: doctorPasswordHash,
+      role: StaffRole.DOCTOR,
+      active: true,
+    },
+  });
+  console.log(`Doctor user ensured: ${doctorUser.username} (${doctorUser.id})`);
+
   // 2. Specializations
   const generalMed = await prisma.specialization.upsert({
     where: { name: 'General Medicine' },

@@ -216,6 +216,33 @@ export class AppointmentsService {
 
   // Doctor daily queue (for Doctor role)
   async getDoctorQueue(doctorUserId: string, date?: string) {
+    // Look up whether this staff user is associated with a doctor record
+    // 1. Direct match on doctor id
+    let targetDoctorId = doctorUserId;
+    const directDoc = await this.prisma.doctor.findUnique({
+      where: { id: doctorUserId },
+    });
+
+    if (!directDoc) {
+      // 2. Match by staff user name or username (e.g. "Dr. Ahmed Mostafa")
+      const staffUser = await this.prisma.staffUser.findUnique({
+        where: { id: doctorUserId },
+      });
+      if (staffUser) {
+        const docByName = await this.prisma.doctor.findFirst({
+          where: {
+            OR: [
+              { name: { contains: staffUser.name, mode: 'insensitive' } },
+              { name: { contains: staffUser.username, mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (docByName) {
+          targetDoctorId = docByName.id;
+        }
+      }
+    }
+
     let dateFilter: Date;
     if (date) {
       const [y, m, d] = date.split('-').map(Number);
@@ -227,7 +254,7 @@ export class AppointmentsService {
 
     return this.prisma.appointment.findMany({
       where: {
-        doctorId: doctorUserId,
+        doctorId: targetDoctorId,
         appointmentDate: dateFilter,
       },
       include: {

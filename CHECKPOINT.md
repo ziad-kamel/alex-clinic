@@ -103,6 +103,20 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [ ] Verify a completed lab order arrives within about one minute; verify retry recovery while the portal is unreachable.
 - [ ] Verify patient login, password change, result detail, and A4 PDF in the deployed portal.
 
+### Phase 4: Doctor Screens, Operational Reports & Polish (COMPLETED & VERIFIED)
+- [x] **Doctor Queue Screen:** (`/dashboard/doctor`) Authenticated doctors view their daily queue, real-time waiting/seen counts, and mark consultations as seen (`PATCH /appointments/:id/seen`).
+- [x] **Operational Reports API:**
+  - `GET /reports/appointments-per-doctor?from=&to=` (appointments grouped by doctor per day with booked/seen/cancelled breakdowns).
+  - `GET /reports/lab-orders-per-day?from=&to=` (daily diagnostic orders volume and total tests).
+  - Strictly protected by `@Roles(StaffRole.ADMIN)`.
+- [x] **Reports Dashboard UI:** (`/dashboard/reports`) tabbed operational analytics for administrators with date-range filters and bilingual metric cards.
+- [x] **Role Separation & Navigation:**
+  - `DOCTOR` (`doctor` / `Doctor@123456`) accesses Doctor Queue only; Front Desk, Lab, and Admin reports are hidden and protected.
+  - `ADMIN` accesses Doctor Queue, Reports, Sync Outbox, and all clinic operational modules.
+- [x] **Reports Automated Tests:** (`apps/api/src/reports/__tests__/reports.service.spec.ts`) passing with 100% assertion coverage.
+- [x] **E2E Testing Suite (Playwright):** Full automated clinical workflows in `e2e/clinical-workflows.spec.ts` covering booking appointments, receipts, lab ordering, result completion, and queue attendance.
+- [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014` in `DECISIONS.md`.
+
 ---
 
 ## 4. Development Run Commands
@@ -132,3 +146,4 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - **Admin:** `admin` / `Admin@123456`
 - **Front Desk:** `frontdesk` / `Staff@123456`
 - **Laboratory:** `lab` / `Lab@123456`
+- **Doctor:** `doctor` / `Doctor@123456`
