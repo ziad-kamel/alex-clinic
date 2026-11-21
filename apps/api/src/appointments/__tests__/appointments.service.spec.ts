@@ -23,7 +23,9 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
   it('rejects booking on a non-working day', async () => {
     // Dr. Ahmed Mostafa has schedules for Sunday-Thursday (weekday 0-4).
     // Saturday = 6 (e.g. 2026-11-21)
-    const doctor = await prisma.doctor.findFirst({ where: { active: true } });
+    const doctor = await prisma.doctor.findFirst({
+      where: { active: true, schedules: { none: { weekday: 6 } } },
+    });
     const patient = await prisma.patient.findFirst();
 
     if (doctor && patient) {
@@ -41,7 +43,9 @@ describe('AppointmentsService - Concurrency & Business Rules', () => {
   }, 30000);
 
   it('generates sequential unique queue numbers under concurrency', async () => {
-    const doctor = await prisma.doctor.findFirst({ where: { active: true } });
+    const doctor = await prisma.doctor.findFirst({
+      where: { active: true, schedules: { some: { weekday: 0 } } },
+    });
     if (!doctor) return;
 
     // Use a date that is a Sunday (weekday 0), e.g. 2026-11-22
