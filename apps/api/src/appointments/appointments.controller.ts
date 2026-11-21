@@ -64,8 +64,9 @@ export class AppointmentsController {
   getDoctorQueue(
     @Req() req: Request & { user: any },
     @Query('date') date?: string,
+    @Query('doctorId') doctorId?: string,
   ) {
-    return this.appointmentsService.getDoctorQueue(req.user.id, date);
+    return this.appointmentsService.getDoctorQueue(req.user, date, doctorId);
   }
 
   @Patch('appointments/:id/seen')

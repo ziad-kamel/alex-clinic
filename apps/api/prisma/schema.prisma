@@ -80,6 +80,7 @@ model Doctor {
   schedules        DoctorSchedule[]
   appointments     Appointment[]
   dayCounters      DoctorDayCounter[]
+  staffUsers       StaffUser[]
 
   @@map("doctors")
 }
@@ -200,6 +201,8 @@ model StaffUser {
   passwordHash String    @map("password_hash")
   role         StaffRole
   active       Boolean   @default(true)
+  doctorId     String?   @map("doctor_id") @db.Uuid
+  doctor       Doctor?   @relation(fields: [doctorId], references: [id])
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("staff_users")

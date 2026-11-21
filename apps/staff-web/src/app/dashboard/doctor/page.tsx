@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface QueueItem {
   id: string;
@@ -16,9 +16,20 @@ interface QueueItem {
   };
 }
 
+interface Doctor {
+  id: string;
+  name: string;
+  nameAr?: string | null;
+  specialization?: {
+    name: string;
+    nameAr?: string | null;
+  };
+}
+
 export default function DoctorQueuePage() {
   const t = useTranslations('doctor');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
 
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -27,11 +38,44 @@ export default function DoctorQueuePage() {
   const [actionSuccess, setActionSuccess] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const loadQueue = async (selectedDate = date) => {
+  // User and Doctor metadata
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string; name: string; doctorId?: string } | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user);
+          if (data.user.role === 'ADMIN') {
+            fetch('/api/doctors')
+              .then((r) => (r.ok ? r.json() : []))
+              .then((docs: Doctor[]) => {
+                setDoctors(docs);
+                if (docs.length > 0) {
+                  setSelectedDoctorId(docs[0].id);
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const loadQueue = async (selectedDate = date, docId = selectedDoctorId) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/doctor/queue?date=${selectedDate}`);
+      const params = new URLSearchParams();
+      if (selectedDate) params.append('date', selectedDate);
+      if (currentUser?.role === 'ADMIN' && docId) {
+        params.append('doctorId', docId);
+      }
+
+      const res = await fetch(`/api/doctor/queue?${params.toString()}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setError(err.message || 'Failed to load queue');
@@ -47,8 +91,10 @@ export default function DoctorQueuePage() {
   };
 
   useEffect(() => {
-    loadQueue(date);
-  }, [date]);
+    if (currentUser) {
+      loadQueue(date, selectedDoctorId);
+    }
+  }, [date, selectedDoctorId, currentUser]);
 
   const handleMarkAsSeen = async (id: string) => {
     setProcessingId(id);
@@ -85,23 +131,50 @@ export default function DoctorQueuePage() {
           <p className="text-sm text-slate-500 mt-1">{t('subtitle')}</p>
         </div>
 
-        {/* Date Selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-slate-600">
-            {t('selectDate')}:
-          </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-1.5 border border-slate-300 rounded-md text-xs bg-white focus:outline-none focus:ring-teal-500"
-          />
-          <button
-            onClick={() => setDate(new Date().toISOString().split('T')[0])}
-            className="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded"
-          >
-            {tCommon('today')}
-          </button>
+        {/* Controls: Doctor Selector (Admin) + Date Selector */}
+        <div className="flex flex-wrap items-center gap-3">
+          {currentUser?.role === 'ADMIN' && doctors.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-slate-600">
+                Doctor / الطبيب:
+              </label>
+              <select
+                value={selectedDoctorId}
+                onChange={(e) => setSelectedDoctorId(e.target.value)}
+                className="px-2.5 py-1.5 border border-slate-300 rounded-md text-xs bg-white font-semibold text-slate-800 focus:outline-none focus:ring-teal-500"
+              >
+                {doctors.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {locale === 'ar' && doc.nameAr ? doc.nameAr : doc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {currentUser?.role === 'DOCTOR' && (
+            <span className="text-xs px-2.5 py-1 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold">
+              👨‍⚕️ {currentUser.name}
+            </span>
+          )}
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-600">
+              {t('selectDate')}:
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-md text-xs bg-white focus:outline-none focus:ring-teal-500"
+            />
+            <button
+              onClick={() => setDate(new Date().toISOString().split('T')[0])}
+              className="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded"
+            >
+              {tCommon('today')}
+            </button>
+          </div>
         </div>
       </div>
 

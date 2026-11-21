@@ -215,32 +215,72 @@ export class AppointmentsService {
   }
 
   // Doctor daily queue (for Doctor role)
-  async getDoctorQueue(doctorUserId: string, date?: string) {
-    // Look up whether this staff user is associated with a doctor record
-    // 1. Direct match on doctor id
-    let targetDoctorId = doctorUserId;
-    const directDoc = await this.prisma.doctor.findUnique({
-      where: { id: doctorUserId },
-    });
+  async getDoctorQueue(
+    currentUser: { id: string; role?: StaffRole; doctorId?: string | null; name?: string; username?: string } | string,
+    date?: string,
+    requestedDoctorId?: string,
+  ) {
+    let staffUserId: string;
+    let role: StaffRole = StaffRole.DOCTOR;
+    let userDoctorId: string | null = null;
 
-    if (!directDoc) {
-      // 2. Match by staff user name or username (e.g. "Dr. Ahmed Mostafa")
+    if (typeof currentUser === 'string') {
+      staffUserId = currentUser;
       const staffUser = await this.prisma.staffUser.findUnique({
-        where: { id: doctorUserId },
+        where: { id: staffUserId },
       });
       if (staffUser) {
-        const docByName = await this.prisma.doctor.findFirst({
-          where: {
-            OR: [
-              { name: { contains: staffUser.name, mode: 'insensitive' } },
-              { name: { contains: staffUser.username, mode: 'insensitive' } },
-            ],
-          },
+        role = staffUser.role;
+        userDoctorId = staffUser.doctorId;
+      }
+    } else {
+      staffUserId = currentUser.id;
+      if (currentUser.role) role = currentUser.role;
+      userDoctorId = currentUser.doctorId || null;
+      if (!userDoctorId) {
+        const staffUser = await this.prisma.staffUser.findUnique({
+          where: { id: staffUserId },
         });
-        if (docByName) {
-          targetDoctorId = docByName.id;
+        userDoctorId = staffUser?.doctorId || null;
+      }
+    }
+
+    let targetDoctorId: string | null = null;
+
+    if (role === StaffRole.ADMIN && requestedDoctorId) {
+      targetDoctorId = requestedDoctorId;
+    } else if (userDoctorId) {
+      targetDoctorId = userDoctorId;
+    } else {
+      // Fallback 1: match by direct doctor ID
+      const directDoc = await this.prisma.doctor.findUnique({
+        where: { id: staffUserId },
+      });
+      if (directDoc) {
+        targetDoctorId = directDoc.id;
+      } else {
+        // Fallback 2: match by staff user name or username
+        const staffUser = await this.prisma.staffUser.findUnique({
+          where: { id: staffUserId },
+        });
+        if (staffUser) {
+          const docByName = await this.prisma.doctor.findFirst({
+            where: {
+              OR: [
+                { name: { equals: staffUser.name, mode: 'insensitive' } },
+                { name: { equals: staffUser.username, mode: 'insensitive' } },
+              ],
+            },
+          });
+          if (docByName) {
+            targetDoctorId = docByName.id;
+          }
         }
       }
+    }
+
+    if (!targetDoctorId) {
+      return [];
     }
 
     let dateFilter: Date;

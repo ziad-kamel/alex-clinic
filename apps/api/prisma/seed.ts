@@ -109,6 +109,12 @@ async function main() {
     },
   });
 
+  // Link doctor user to doctor record if not already linked
+  await prisma.staffUser.updateMany({
+    where: { username: 'doctor', doctorId: null },
+    data: { doctorId: doctor1.id },
+  });
+
   // Schedules (Sunday=0 to Thursday=4)
   for (let weekday = 0; weekday <= 4; weekday++) {
     const existing = await prisma.doctorSchedule.findFirst({
