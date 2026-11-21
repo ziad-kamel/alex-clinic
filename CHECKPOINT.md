@@ -115,7 +115,8 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
   - `ADMIN` accesses Doctor Queue, Reports, Sync Outbox, and all clinic operational modules.
 - [x] **Reports Automated Tests:** (`apps/api/src/reports/__tests__/reports.service.spec.ts`) passing with 100% assertion coverage.
 - [x] **E2E Testing Suite (Playwright):** Full automated clinical workflows in `e2e/clinical-workflows.spec.ts` covering booking appointments, receipts, lab ordering, result completion, and queue attendance.
-- [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014` in `DECISIONS.md`.
+- [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014` & `DECISION-015` in `DECISIONS.md`.
+- [x] **Direct Doctor Linking:** Added `doctorId` foreign key on `staff_users` referencing `doctors.id`. Queue retrieval reliably matches the logged-in doctor account, while administrators have a dropdown selector to view any doctor's queue.
 
 ---
 

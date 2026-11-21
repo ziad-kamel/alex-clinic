@@ -148,3 +148,16 @@
   4. **Frontend Integration:** Built bilingual UI with RTL support in Next.js Staff Web at `/dashboard/doctor` and `/dashboard/reports`.
 - **Alternatives Considered:** Allowing all roles to access doctor queues or reports was rejected per specification role tables.
 - **Consequences:** Doctors have an isolated, real-time consultation workflow, and administrators have real-time visibility into clinic workload metrics without affecting transaction performance.
+
+## DECISION-015: Direct Doctor Profile Association via Foreign Key on Staff Users
+
+- **Date:** 2026-11-21
+- **Status:** Accepted
+- **Context:** The `staff_users` table stores system login accounts, while the `doctors` table represents clinical doctor profiles with schedules and appointments. Relying on username or name string matching was fragile, prevented multiple doctors from sharing names, and caused queue lookups to fail when staff account IDs differed from doctor profile IDs.
+- **Decision:**
+  1. **Foreign Key Relation:** Added `doctorId` (`doctor_id UUID REFERENCES doctors(id)`) to `staff_users`, with a reciprocal `staffUsers` relation on `doctors`.
+  2. **JWT & Session Context:** Included `doctorId` in `JwtPayload` and `AuthService.login` response.
+  3. **Queue Lookup (`getDoctorQueue`):** Directly queries appointments by `currentUser.doctorId`. If the user is an `ADMIN`, they can optionally select and view any doctor's queue via `?doctorId=...`.
+  4. **Frontend UI:** Shows the doctor's name badge for logged-in doctors, and exposes a Doctor dropdown selector when viewed by administrators.
+- **Alternatives Considered:** Name string matching (rejected due to name collisions and case sensitivity issues).
+- **Consequences:** Unambiguous 1-to-1 or N-to-1 linking between login credentials and doctor records; queue queries reliably load the exact doctor's booked appointments.
