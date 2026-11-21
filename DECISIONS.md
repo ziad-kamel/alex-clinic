@@ -161,3 +161,15 @@
   4. **Frontend UI:** Shows the doctor's name badge for logged-in doctors, and exposes a Doctor dropdown selector when viewed by administrators.
 - **Alternatives Considered:** Name string matching (rejected due to name collisions and case sensitivity issues).
 - **Consequences:** Unambiguous 1-to-1 or N-to-1 linking between login credentials and doctor records; queue queries reliably load the exact doctor's booked appointments.
+
+## DECISION-016: NestJS Compilation Structure & Entrypoint Normalization
+
+- **Date:** 2026-11-21
+- **Status:** Accepted
+- **Context:** Test files in `apps/api` (e.g. `portal-security.spec.ts`) referenced modules outside `apps/api/src`. Without explicit compilation exclusions and root directory pinning, the TypeScript compiler treated the repository root as the compilation root, generating outputs in `dist/api/src/` rather than `dist/`. Consequently, Nest CLI's file watcher spawned stale outputs (`dist/src/main.js` from prior builds), preventing new API endpoints, schema changes, and updated service methods from taking effect in running dev servers.
+- **Decision:**
+  1. Configured `apps/api/nest-cli.json` with `"sourceRoot": "src"` and `"compilerOptions": { "deleteOutDir": true }`.
+  2. Updated `apps/api/tsconfig.json` to explicitly `"include": ["src/**/*"]` and exclude `**/*.spec.ts`, `prisma`, and `__tests__` from production builds.
+  3. Added backward-compatible entrypoint forwarding (`apps/api/dist/src/main.js` -> `../main.js`).
+- **Alternatives Considered:** Relying on default Nest CLI inferral was rejected because monorepo cross-package references corrupt TypeScript's root directory inference.
+- **Consequences:** NestJS builds reliably output cleanly to `dist/`, stale artifacts are eliminated on clean builds, and watcher reloads consistently execute the latest application logic.
