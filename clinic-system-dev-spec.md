@@ -158,7 +158,7 @@ All timestamps are stored as UTC (`timestamptz`) and displayed in `CLINIC_TIMEZO
 
 **doctor_schedules**: `id`, `doctor_id`, `weekday` (0-6), `start_time`, `end_time`, `max_patients` (nullable)
 
-**appointments**: `id`, `patient_id`, `doctor_id`, `reserved_at`, `appointment_date`, `queue_number`, `status` (`BOOKED` | `SEEN` | `CANCELLED` | `NO_SHOW`), `created_by`
+**appointments**: `id`, `patient_id`, `doctor_id`, `reserved_at`, `appointment_date`, `queue_number`, `status` (`BOOKED` | `SEEN` | `CANCELLED` | `NO_SHOW`), `created_by`, `booking_source` (`FRONT_DESK` | `ONLINE`, defaults to `FRONT_DESK`)
 - Unique constraint: (`doctor_id`, `appointment_date`, `queue_number`).
 
 **doctor_day_counters**: `doctor_id`, `date`, `last_number` (primary key on the first two)
@@ -233,7 +233,7 @@ Contains: clinic name, receipt number, patient name, phone, list of tests, order
 
 ## 8. API surface (NestJS)
 
-All routes prefixed `/api`, all require auth except login. Roles in brackets.
+All routes are prefixed `/api`. All require authentication except login and the narrowly scoped public booking routes added in Phase 5. Roles in brackets.
 
 **Auth**
 - `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/change-password`
@@ -252,6 +252,10 @@ All routes prefixed `/api`, all require auth except login. Roles in brackets.
 - `PATCH /appointments/:id/cancel` [FRONT_DESK, ADMIN]
 - `GET /appointments/:id/receipt` [FRONT_DESK]
 - `GET /doctor/queue?date=` and `PATCH /appointments/:id/seen` [DOCTOR]
+- `GET /public/booking/specializations` [public; active specializations only]
+- `GET /public/booking/doctors?specializationId=` [public; active doctors for the selected specialization]
+- `GET /public/booking/availability?doctorId=&from=&to=` [public; available dates only]
+- `POST /public/appointments` [public; rate limited; validates availability and capacity transactionally]
 
 **Lab**
 - `POST /lab-orders` [FRONT_DESK]
@@ -357,11 +361,32 @@ Acceptance:
 Tasks: doctor queue screen and "seen" action; reports (appointments per doctor per day, lab orders per day); end-to-end tests (Playwright) for: book appointment and print receipt, book lab test and complete, patient views results.
 Acceptance: all end-to-end tests pass; `README.md` and `DECISIONS.md` complete.
 
+### Phase 5: Online patient appointment booking
+Tasks: Add an unauthenticated appointment-booking journey to the internet-facing patient portal, while retaining the existing Front Desk booking flow. Patients choose a specialization, an active doctor in that specialization, an available clinic date for that doctor, then enter their name and phone number. The system reuses a matching patient record or creates one, books the appointment, assigns the next doctor/date queue number, and displays the booking confirmation and queue number. Portal bookings appear alongside Front Desk bookings in the existing Front Desk appointments-for-the-day list and are labeled by booking source.
+
+Requirements:
+- Use the clinic timezone for dates. Only offer today or future dates on which the doctor is scheduled and has remaining `max_patients` capacity; do not introduce time slots.
+- Implement a server-side patient reuse rule using the patient's name and normalized phone together, consistent with the Front Desk intake convention, so family members who share a phone are not merged. Do not expose patient search or patient-existence details through public endpoints.
+- Create/reuse the patient, enforce capacity, allocate the queue number using the same concurrency-safe `doctor_day_counters` transaction as Front Desk booking, and save the appointment as one atomic operation. A booking failure must not leave an orphan patient or consume a queue number.
+- Record `booking_source` as `ONLINE` or `FRONT_DESK`; existing appointments default to `FRONT_DESK`. The Front Desk daily list includes both sources and identifies online bookings.
+- The public portal must call narrowly scoped, validated booking/availability API endpoints. Do not expose clinic database credentials or operational tables to the browser or grant the portal database access to the clinic `public` schema. Before implementation, decide how the internet-facing portal will securely reach the clinic booking API (for example, a hardened public API deployment or a secured network gateway).
+- Protect public endpoints from automated abuse with server-side rate limiting and input validation. Return only the public specialization/doctor/date data needed for booking and the submitting patient's own booking confirmation.
+- Keep the booking flow bilingual and RTL-compatible, and use Western digits. Include localized validation and availability/full-day errors.
+
+Acceptance:
+- A patient can complete the public specialization → doctor → available date → name and phone flow without a portal results account, then sees the correct doctor, date, and assigned queue number.
+- Inactive doctors, dates outside their schedule, past dates, and full dates cannot be booked; simultaneous online and Front Desk bookings cannot exceed capacity or receive duplicate queue numbers.
+- Booking a patient already registered with the same matching name and normalized phone reuses the patient row; a different name with a shared phone remains a separate patient.
+- Failed booking attempts leave no orphan patient or appointment and do not consume a queue number.
+- The authenticated Front Desk appointments list shows online and desk bookings together for the selected day and identifies portal-origin appointments.
+- Public routes do not disclose patient-existence information or expose clinic database credentials/data; rate limiting and role boundaries are covered by automated tests.
+- The flow and confirmation work in English and Arabic, including RTL layout, Arabic names, and Western digits. End-to-end tests cover online booking and its appearance in the Front Desk daily list.
+
 ---
 
 ## 13. Out of scope (for now)
 
-Payments and invoicing, SMS/WhatsApp notifications, fixed time-slot scheduling, patient medical records and doctor notes, insurance, patient self-booking online, native mobile apps.
+Payments and invoicing, SMS/WhatsApp notifications, fixed time-slot scheduling, patient medical records and doctor notes, insurance, native mobile apps.
 
 ---
 

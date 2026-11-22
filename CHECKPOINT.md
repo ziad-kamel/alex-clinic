@@ -1,6 +1,6 @@
 # PROJECT PROGRESS CHECKPOINT & AGENT CONTINUATION GUIDE
 
-> **Last Updated:** 2026-11-21
+> **Last Updated:** 2026-11-22
 > **Specification Reference:** `clinic-system-dev-spec.md` (Single source of truth)
 > **Active Branch:** `main`
 
@@ -73,9 +73,9 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 
 ---
 
-## 3. Active Phase: Phase 3 — Patient Portal & Sync
+## 3. Phase 3: Patient Portal & Sync (COMPLETED & VERIFIED)
 
-**Implementation is complete; final runtime and external acceptance checks remain.** The portal, API worker/receivers, and admin outbox monitor are implemented, and the Supabase migration is applied. Local sync for a completed result has been verified in the Portal database. The local Portal was missing `CLINIC_TIMEZONE`; `apps/portal/.env.local` now sets it to `Africa/Cairo` (ignored local configuration), but the Portal must be restarted and the results page rechecked. No live Vercel-to-Supabase sync or end-to-end PDF test has been performed. Do not mark Phase 3 complete until the remaining acceptance checks pass.
+**Phase 3 implementation and acceptance checks are complete.** The portal, API worker/receivers, and admin outbox monitor are implemented; the Supabase migration is applied; local portal results rendering, production deployment and live synchronization, retry recovery, patient login/password change, result detail, and A4 PDF delivery have been verified.
 
 ### Implemented
 
@@ -98,10 +98,10 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [x] Verified the Arabic font files are present in the PDF route's Next.js serverless trace.
 - [x] Applied `apps/portal/prisma/migrations/20261120004700_init_portal/migration.sql` to the empty `portal` schema using the IPv4 session pooler; marked the migration applied and verified Prisma status, tables, and RLS.
 - [x] Verified a completed result was sent to the local Portal database and the results-page query returns its order.
-- [ ] Restart the local Portal after setting `CLINIC_TIMEZONE` and confirm the patient results page renders.
-- [ ] Configure production secrets and deploy the portal to Vercel.
-- [ ] Verify a completed lab order arrives within about one minute; verify retry recovery while the portal is unreachable.
-- [ ] Verify patient login, password change, result detail, and A4 PDF in the deployed portal.
+- [x] Restart the local Portal after setting `CLINIC_TIMEZONE` and confirm the patient results page renders.
+- [x] Configure production secrets and deploy the portal to Vercel.
+- [x] Verify a completed lab order arrives within about one minute; verify retry recovery while the portal is unreachable.
+- [x] Verify patient login, password change, result detail, and A4 PDF in the deployed portal.
 
 ### Phase 4: Doctor Screens, Operational Reports & Polish (COMPLETED & VERIFIED)
 - [x] **Doctor Queue Screen:** (`/dashboard/doctor`) Authenticated doctors view their daily queue, real-time waiting/seen counts, and mark consultations as seen (`PATCH /appointments/:id/seen`).
@@ -118,6 +118,16 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [x] **Documentation & Architecture Decisions:** Updated `README.md`, `CHECKPOINT.md`, and recorded `DECISION-014`, `DECISION-015`, and `DECISION-016` in `DECISIONS.md`.
 - [x] **Direct Doctor Linking:** Added `doctorId` foreign key on `staff_users` referencing `doctors.id`. Queue retrieval reliably matches the logged-in doctor account, while administrators have a dropdown selector to view any doctor's queue.
 - [x] **Compilation Structure & Watcher Normalization:** Added `apps/api/nest-cli.json` and scoped `apps/api/tsconfig.json` to prevent TypeScript monorepo root inflation. Solved stale watcher execution so that live dev servers always run the latest build artifacts directly from `dist/`. Live queue retrieval verified for doctor account (`doctor`).
+
+### Next Phase: Phase 5 — Online Patient Appointment Booking (PLANNED)
+
+Add a public appointment-booking journey to the patient portal: choose specialization, doctor, and an available date, enter name and phone, then receive the doctor/date queue number. Reuse existing patient records when name and normalized phone match, and assign queue numbers through the same atomic counter used by Front Desk bookings. Online bookings must appear with Front Desk bookings in the daily appointments list, labeled by source.
+
+- [ ] Decide how the internet-facing portal securely reaches the clinic booking API without exposing clinic database credentials or operational tables.
+- [ ] Implement public availability and booking endpoints with validation, rate limiting, transactional patient reuse/creation, capacity checks, and shared queue numbering.
+- [ ] Add the bilingual portal booking flow and booking confirmation.
+- [ ] Include portal bookings in the Front Desk daily list and identify their source.
+- [ ] Add automated acceptance and end-to-end coverage for availability, capacity/concurrency, patient reuse, and Front Desk visibility.
 
 ---
 
