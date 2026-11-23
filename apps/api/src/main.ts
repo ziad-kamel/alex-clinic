@@ -5,7 +5,7 @@ import * as cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.setGlobalPrefix('api');
   app.use(cookieParser());
@@ -18,15 +18,17 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger docs at /api/docs
-  const config = new DocumentBuilder()
-    .setTitle('Alex Clinic Management API')
-    .setDescription('Clinic Staff API with role-based access control')
-    .setVersion('1.0')
-    .addCookieAuth('staff_token')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Keep API documentation local-only when the booking API is internet reachable.
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Alex Clinic Management API')
+      .setDescription('Clinic Staff API with role-based access control')
+      .setVersion('1.0')
+      .addCookieAuth('staff_token')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port);

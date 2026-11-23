@@ -7,18 +7,61 @@ import {
   Param,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AppointmentsService } from './appointments.service';
 import { BookAppointmentDto } from './dto/book-appointment.dto';
-import { Roles } from '../auth/roles.decorator';
+import { Public, Roles } from '../auth/roles.decorator';
 import { StaffRole } from '@prisma/client';
 import { Request } from 'express';
+import {
+  PublicBookAppointmentDto,
+  PublicBookingAvailabilityQueryDto,
+  PublicBookingDoctorsQueryDto,
+} from './dto/public-booking.dto';
+import { PublicBookingGatewayGuard } from './public-booking-gateway.guard';
 
 @ApiTags('Appointments')
 @Controller()
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
+
+  @Get('public/booking/specializations')
+  @Public()
+  @UseGuards(PublicBookingGatewayGuard)
+  @ApiOperation({ summary: 'List specializations available for online booking' })
+  getPublicBookingSpecializations() {
+    return this.appointmentsService.getPublicBookingSpecializations();
+  }
+
+  @Get('public/booking/doctors')
+  @Public()
+  @UseGuards(PublicBookingGatewayGuard)
+  @ApiOperation({ summary: 'List active doctors for a specialization' })
+  getPublicBookingDoctors(@Query() query: PublicBookingDoctorsQueryDto) {
+    return this.appointmentsService.getPublicBookingDoctors(query.specializationId);
+  }
+
+  @Get('public/booking/availability')
+  @Public()
+  @UseGuards(PublicBookingGatewayGuard)
+  @ApiOperation({ summary: 'List bookable dates for an active doctor' })
+  getPublicBookingAvailability(@Query() query: PublicBookingAvailabilityQueryDto) {
+    return this.appointmentsService.getPublicBookingAvailability(
+      query.doctorId,
+      query.from,
+      query.to,
+    );
+  }
+
+  @Post('public/appointments')
+  @Public()
+  @UseGuards(PublicBookingGatewayGuard)
+  @ApiOperation({ summary: 'Create an appointment through the signed portal gateway' })
+  bookPublicAppointment(@Body() dto: PublicBookAppointmentDto) {
+    return this.appointmentsService.bookPublicAppointment(dto);
+  }
 
   @Post('appointments')
   @Roles(StaffRole.FRONT_DESK, StaffRole.ADMIN)

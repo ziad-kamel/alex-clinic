@@ -11,6 +11,8 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:phase5-backfill-phone-normalized": "prisma db execute --schema prisma/schema.prisma --file prisma/phase5-backfill-phone-normalized.sql",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node prisma/seed.ts"

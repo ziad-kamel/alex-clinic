@@ -1,5 +1,7 @@
 {
   "common": {
+    "languageLabel": "Language",
+    "arabicLabel": "Arabic",
     "clinicName": "Alex Clinic",
     "language": "Language",
     "english": "English",
@@ -8,6 +10,7 @@
     "logout": "Sign out",
     "backToResults": "Back to results",
     "changePassword": "Change password",
+    "bookAppointment": "Book an appointment",
     "save": "Save",
     "cancel": "Cancel"
   },
@@ -19,7 +22,8 @@
     "submit": "Sign in",
     "invalid": "The user ID or password is incorrect.",
     "rateLimited": "Too many sign-in attempts. Try again later.",
-    "networkError": "Unable to sign in right now. Please try again."
+    "networkError": "Unable to sign in right now. Please try again.",
+    "bookingPrompt": "Need to see a doctor?"
   },
   "results": {
     "title": "Your laboratory results",
@@ -52,5 +56,44 @@
     "invalid": "Enter your current password and a new password with at least 8 characters.",
     "failed": "Unable to change your password. Check your current password and try again.",
     "required": "Change your password to continue to your results."
+  },
+  "booking": {
+    "clinicName": "Alex Clinic",
+    "loading": "Loading...",
+    "title": "Book an appointment",
+    "subtitle": "Choose a specialization, doctor, and available date, then enter your name and phone number.",
+    "progress": "Booking steps",
+    "selectSpecialization": "Choose a specialization",
+    "specializationPlaceholder": "Select a specialization",
+    "selectDoctor": "Choose a doctor",
+    "doctorPlaceholder": "Select a doctor",
+    "selectDate": "Choose an available date",
+    "datePlaceholder": "Select a date",
+    "yourDetails": "Your contact details",
+    "fullName": "Full name",
+    "phone": "Phone number",
+    "phoneHint": "Use Western digits (0-9).",
+    "continue": "Continue",
+    "back": "Back",
+    "confirmBooking": "Confirm appointment",
+    "submitting": "Booking...",
+    "noSpecializations": "No specializations are available for online booking right now.",
+    "noDoctors": "No doctors are available for this specialization right now.",
+    "noAvailableDates": "There are no available dates in the next 90 days.",
+    "successTitle": "Your appointment is booked",
+    "successSubtitle": "Show this queue number when you arrive at the clinic.",
+    "queueNumber": "Your doctor queue number",
+    "specialization": "Specialization",
+    "doctor": "Doctor",
+    "appointmentDate": "Appointment date",
+    "bookAnother": "Book another appointment",
+    "dateFull": "This date just filled up. Choose another available date.",
+    "dateUnavailable": "This doctor or date is no longer available. Please choose again.",
+    "invalidDetails": "Check your name, phone number, and selected date, then try again.",
+    "contactClinic": "We could not complete this booking. Please contact the clinic.",
+    "rateLimited": "Too many booking requests. Please try again later.",
+    "unavailable": "Online booking is temporarily unavailable. Please try again later.",
+    "alreadyHaveAccount": "Already have a results account?",
+    "signIn": "Sign in to view results"
   }
 }

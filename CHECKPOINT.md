@@ -1,6 +1,6 @@
 # PROJECT PROGRESS CHECKPOINT & AGENT CONTINUATION GUIDE
 
-> **Last Updated:** 2026-11-22
+> **Last Updated:** 2026-11-23
 > **Specification Reference:** `clinic-system-dev-spec.md` (Single source of truth)
 > **Active Branch:** `main`
 
@@ -119,15 +119,22 @@ A bilingual (English & Arabic with full RTL) Clinic Management System with a spl
 - [x] **Direct Doctor Linking:** Added `doctorId` foreign key on `staff_users` referencing `doctors.id`. Queue retrieval reliably matches the logged-in doctor account, while administrators have a dropdown selector to view any doctor's queue.
 - [x] **Compilation Structure & Watcher Normalization:** Added `apps/api/nest-cli.json` and scoped `apps/api/tsconfig.json` to prevent TypeScript monorepo root inflation. Solved stale watcher execution so that live dev servers always run the latest build artifacts directly from `dist/`. Live queue retrieval verified for doctor account (`doctor`).
 
-### Next Phase: Phase 5 — Online Patient Appointment Booking (PLANNED)
+### Active Phase: Phase 5 — Online Patient Appointment Booking (IN PROGRESS)
 
-Add a public appointment-booking journey to the patient portal: choose specialization, doctor, and an available date, enter name and phone, then receive the doctor/date queue number. Reuse existing patient records when name and normalized phone match, and assign queue numbers through the same atomic counter used by Front Desk bookings. Online bookings must appear with Front Desk bookings in the daily appointments list, labeled by source.
+The public portal booking journey, signed API proxy, transactional API endpoints, patient identity normalization, Front Desk source badge, and 30-second appointment list refresh are implemented. The additive API schema is pushed to Supabase, existing phone values were backfilled, and ignored local API/Portal environment files are configured with a matching development gateway secret. Production API connectivity and deployed end-to-end acceptance remain.
 
-- [ ] Decide how the internet-facing portal securely reaches the clinic booking API without exposing clinic database credentials or operational tables.
-- [ ] Implement public availability and booking endpoints with validation, rate limiting, transactional patient reuse/creation, capacity checks, and shared queue numbering.
-- [ ] Add the bilingual portal booking flow and booking confirmation.
-- [ ] Include portal bookings in the Front Desk daily list and identify their source.
-- [ ] Add automated acceptance and end-to-end coverage for availability, capacity/concurrency, patient reuse, and Front Desk visibility.
+- [x] Use signed server-to-server portal requests; the portal has no access to clinic operational tables.
+- [x] Implement public availability and booking endpoints with input validation, rate limiting, transactional patient reuse/creation, capacity checks, and shared queue numbering.
+- [x] Add the bilingual portal booking flow and queue-number confirmation.
+- [x] Include portal bookings in the Front Desk daily list, label their source, and refresh the list every 30 seconds.
+- [x] Add focused automated tests for patient reuse, shared-phone separation, date/capacity rejection, queue ordering, and API signatures.
+- [x] Push the API schema and backfill `phone_normalized` for existing patients using `apps/api/prisma/phase5-backfill-phone-normalized.sql`.
+- [x] Configure local API/Portal environment files with the local API URL and a matching private development gateway secret.
+- [x] Fix localhost booking failures caused by Prisma being unable to deserialize PostgreSQL's `void` result from the patient identity advisory lock. Both Portal booking and Front Desk patient registration now select a boolean lock result.
+- [x] Verify the lock query using a rollback-only database probe; focused booking and patient-service tests (7 total), API/Portal/Staff Web type checks, and the API production build pass after the fix.
+- [x] Verify the local availability response for Omar in General Medicine: **28 December 2026 is unavailable** (Monday; his seeded schedule offers Saturdays). Patients should select a date returned by availability.
+- [ ] Configure the production portal's HTTPS API URL and matching gateway secret.
+- [ ] Run the deployed end-to-end booking flow and verify the appointment appears in the Front Desk daily list.
 
 ---
 

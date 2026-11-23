@@ -34,6 +34,12 @@ export function PortalHeader({ patientName }: { patientName: string }) {
             {t('backToResults')}
           </Link>
           <Link
+            href="/book-appointment"
+            className="text-xs font-semibold text-teal-800 hover:underline"
+          >
+            {t('bookAppointment')}
+          </Link>
+          <Link
             href="/change-password"
             className="text-xs font-semibold text-slate-700 hover:text-teal-800"
           >

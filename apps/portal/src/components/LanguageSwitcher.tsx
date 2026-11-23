@@ -15,7 +15,7 @@ export function LanguageSwitcher() {
 
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="text-slate-500">{t('language')}:</span>
+      <span className="text-slate-500">{t('languageLabel')}:</span>
       <button
         type="button"
         onClick={() => changeLocale('en')}
@@ -30,7 +30,7 @@ export function LanguageSwitcher() {
         aria-pressed={locale === 'ar'}
         className={`rounded px-2 py-1 ${locale === 'ar' ? 'bg-teal-100 font-bold text-teal-800' : 'text-slate-600 hover:bg-slate-100'}`}
       >
-        {t('arabic')}
+        {t('arabicLabel')}
       </button>
     </div>
   );

@@ -34,8 +34,21 @@ interface Appointment {
   queueNumber: number;
   appointmentDate: string;
   status: string;
+  bookingSource: 'FRONT_DESK' | 'ONLINE';
   patient: { name: string; phone: string };
   doctor: { name: string; nameAr?: string; specialization: { name: string; nameAr?: string } };
+}
+
+function clinicTodayDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: process.env.NEXT_PUBLIC_CLINIC_TIMEZONE || 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    numberingSystem: 'latn',
+  }).formatToParts(new Date());
+  const part = (type: string) => parts.find((item) => item.type === type)?.value || '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
 interface LabTest {
@@ -154,14 +167,19 @@ export default function FrontDeskPage() {
     loadTodayAppointments();
   }, []);
 
-  const loadTodayAppointments = (docId?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+  const loadTodayAppointments = useCallback((docId?: string) => {
+    const today = clinicTodayDate();
     const url = `/api/appointments?date=${today}${docId ? `&doctorId=${docId}` : ''}`;
     fetch(url)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setAppointments(data))
       .catch(() => {});
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => loadTodayAppointments(doctorFilter), 30_000);
+    return () => window.clearInterval(timer);
+  }, [doctorFilter, loadTodayAppointments]);
 
   // Search & Paginate Patients with AbortController
   const fetchPatients = useCallback(async (nameVal: string, phoneVal: string, page = 1) => {
@@ -293,7 +311,9 @@ export default function FrontDeskPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setBookingError(data.message || 'Failed to book appointment');
+        setBookingError(
+          data.code === 'DATE_FULL' ? t('dateFull') : data.message || 'Failed to book appointment',
+        );
         setLoading(false);
         return;
       }
@@ -1009,6 +1029,11 @@ export default function FrontDeskPage() {
                       >
                         {a.status}
                       </span>
+                      {a.bookingSource === 'ONLINE' && (
+                        <span className="ms-2 inline-block rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
+                          {t('onlineBooking')}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">
                       {a.patient.name}

@@ -173,3 +173,16 @@
   3. Added backward-compatible entrypoint forwarding (`apps/api/dist/src/main.js` -> `../main.js`).
 - **Alternatives Considered:** Relying on default Nest CLI inferral was rejected because monorepo cross-package references corrupt TypeScript's root directory inference.
 - **Consequences:** NestJS builds reliably output cleanly to `dist/`, stale artifacts are eliminated on clean builds, and watcher reloads consistently execute the latest application logic.
+
+## DECISION-017: Signed Portal Gateway for Public Appointment Booking
+
+- **Date:** 2026-11-23
+- **Status:** Accepted
+- **Context:** Phase 5 makes appointment booking available from the internet, while clinic appointments and patient records remain in the API's `public` schema. The Vercel portal must not receive direct access to clinic operational tables or credentials.
+- **Decision:**
+  1. Add same-origin Next.js route handlers in `apps/portal` that rate-limit callers in the existing portal database and proxy only specialization, doctor, availability, and booking requests to narrowly scoped NestJS endpoints.
+  2. Sign each portal-to-API request with a shared HMAC-SHA256 secret, timestamp, method, exact path/query, and body hash. The API rejects unsigned, expired, or mismatched requests. Production API traffic must use HTTPS; Swagger remains disabled in production.
+  3. Use the existing `portal_login_limits` table for separately HMAC-scoped booking read/write buckets; only HMAC hashes of client IP addresses are stored in the portal database.
+  4. Store booking source on appointments. Serialize all bookings on the existing doctor/date counter before checking capacity, and reuse a patient only when an Arabic-normalized name and canonical phone match. Both public booking and Front Desk patient registration take the same identity advisory lock, so concurrent registrations do not create duplicates. Select `pg_advisory_xact_lock(...) IS NOT NULL AS lock_acquired` for the raw lock query: Prisma cannot deserialize PostgreSQL's `void` result directly. A rollback-only database probe verified the boolean result. An indexed `phone_normalized` field supports matching existing records; Egyptian `+20` / `0020` prefixes normalize to the local leading `0`.
+- **Alternatives Considered:** Direct browser access to Supabase clinic tables was rejected because it would expose operational data and require a new public database access policy. Allowing unauthenticated requests directly to the staff API was rejected; the signed portal gateway restricts the public routes to the portal server.
+- **Consequences:** The portal database stays isolated from clinic data. Production online booking requires an HTTPS-reachable NestJS API and the same private gateway secret in both server environments. Existing patient phone values need the documented one-time normalization backfill after the Prisma schema is pushed. Local booking verification also confirmed that Omar's General Medicine schedule does not offer 2026-12-28; the portal must use dates returned by the availability endpoint.

@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { LoginForm } from '@/components/LoginForm';
 import { getClinicName } from '@/lib/clinic';
@@ -34,6 +35,12 @@ export default async function LoginPage() {
           </p>
         </div>
         <LoginForm />
+        <div className="mt-6 border-t border-slate-200 pt-5 text-center">
+          <p className="text-sm text-slate-600">{t('bookingPrompt')}</p>
+          <Link href="/book-appointment" className="mt-2 inline-flex rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800">
+            {tCommon('bookAppointment')}
+          </Link>
+        </div>
       </section>
       <footer className="pb-2 text-center text-xs text-slate-400">
         {clinicName}

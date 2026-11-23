@@ -44,6 +44,8 @@
     "loggedInAs": "Logged in as"
   },
   "frontDesk": {
+    "onlineBooking": "Online",
+    "dateFull": "The selected doctor is fully booked on this date.",
     "title": "Front Desk & Reception",
     "registerPatientTitle": "Register New Patient",
     "searchPatientTitle": "Patient Search & Lookup",

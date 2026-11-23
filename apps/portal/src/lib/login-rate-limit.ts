@@ -2,15 +2,22 @@ import { createHmac } from 'node:crypto';
 import type { Prisma } from '@prisma/client-portal';
 import { prisma } from './db';
 
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS_PER_IP = 20;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS_PER_IP = 20;
 
-export async function consumeLoginRateLimit(ipAddress: string) {
+export async function consumePortalRateLimit(
+  ipAddress: string,
+  scope: string,
+  maxAttempts: number,
+  windowMs: number,
+) {
   const secret = process.env.SESSION_SECRET;
   if (!secret || Buffer.byteLength(secret, 'utf8') < 32) {
     throw new Error('SESSION_SECRET must contain at least 32 bytes');
   }
-  const ipHash = createHmac('sha256', secret).update(ipAddress).digest('hex');
+  const ipHash = createHmac('sha256', secret)
+    .update(`${scope}\u0000${ipAddress}`)
+    .digest('hex');
   const now = new Date();
 
   await prisma.portalLoginLimit.upsert({
@@ -35,7 +42,7 @@ export async function consumeLoginRateLimit(ipAddress: string) {
       return false;
     }
 
-    if (bucket.windowStartedAt.getTime() <= now.getTime() - WINDOW_MS) {
+    if (bucket.windowStartedAt.getTime() <= now.getTime() - windowMs) {
       await tx.portalLoginLimit.update({
         where: { ipHash },
         data: {
@@ -54,15 +61,19 @@ export async function consumeLoginRateLimit(ipAddress: string) {
       data: {
         attempts,
         blockedUntil:
-          attempts > MAX_ATTEMPTS_PER_IP
-            ? new Date(now.getTime() + WINDOW_MS)
+          attempts > maxAttempts
+            ? new Date(now.getTime() + windowMs)
             : null,
       },
     });
     await pruneOldBuckets(tx, now);
 
-    return attempts <= MAX_ATTEMPTS_PER_IP;
+    return attempts <= maxAttempts;
   });
+}
+
+export function consumeLoginRateLimit(ipAddress: string) {
+  return consumePortalRateLimit(ipAddress, 'portal-login', LOGIN_MAX_ATTEMPTS_PER_IP, LOGIN_WINDOW_MS);
 }
 
 async function pruneOldBuckets(tx: Prisma.TransactionClient, now: Date) {

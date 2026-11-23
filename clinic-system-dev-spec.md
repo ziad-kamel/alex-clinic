@@ -121,6 +121,7 @@ CLINIC_TIMEZONE=            # IANA name, required
 PORTAL_BASE_URL=            # public URL of the portal
 PORTAL_SYNC_URL=            # portal base URL used by the sync worker
 SYNC_SECRET=                # shared HMAC secret with the portal
+PUBLIC_BOOKING_GATEWAY_SECRET= # shared HMAC secret for signed portal-to-API booking requests
 FORCE_PASSWORD_CHANGE=false # portal: force password change on first login
 ```
 
@@ -137,6 +138,8 @@ DATABASE_URL=               # pooled connection string
 DIRECT_URL=                 # direct connection for migrations
 SESSION_SECRET=
 SYNC_SECRET=                # same value as the API
+PUBLIC_BOOKING_API_URL=     # HTTPS-reachable API base URL ending in /api
+PUBLIC_BOOKING_GATEWAY_SECRET= # same private secret as the API
 NEXT_PUBLIC_CLINIC_NAME=
 DEFAULT_LOCALE=en            # en or ar
 ```
@@ -149,8 +152,9 @@ All timestamps are stored as UTC (`timestamptz`) and displayed in `CLINIC_TIMEZO
 
 ### 6.1 Local database (API)
 
-**patients**: `id`, `name`, `phone`, `extra_phone` (nullable), `created_at`
+**patients**: `id`, `name`, `phone`, `phone_normalized`, `extra_phone` (nullable), `created_at`
 - `phone` is **not unique** (family members may share a phone). Registration first searches by phone and name; the front desk either selects an existing patient or creates a new one.
+- `phone_normalized` contains canonical digits only (Egypt `+20` / `0020` prefixes map to the local leading `0`) and is indexed for public booking patient reuse; existing values are backfilled when the Phase 5 schema change is applied.
 
 **specializations**: `id`, `name` (unique), `name_ar` (nullable)
 
@@ -372,6 +376,7 @@ Requirements:
 - The public portal must call narrowly scoped, validated booking/availability API endpoints. Do not expose clinic database credentials or operational tables to the browser or grant the portal database access to the clinic `public` schema. Before implementation, decide how the internet-facing portal will securely reach the clinic booking API (for example, a hardened public API deployment or a secured network gateway).
 - Protect public endpoints from automated abuse with server-side rate limiting and input validation. Return only the public specialization/doctor/date data needed for booking and the submitting patient's own booking confirmation.
 - Keep the booking flow bilingual and RTL-compatible, and use Western digits. Include localized validation and availability/full-day errors.
+- When using Prisma raw SQL for transaction-scoped advisory locks, return a Prisma-decodable scalar (such as a boolean) rather than PostgreSQL's `void` lock result; the patient identity lock is shared with Front Desk registration.
 
 Acceptance:
 - A patient can complete the public specialization → doctor → available date → name and phone flow without a portal results account, then sees the correct doctor, date, and assigned queue number.

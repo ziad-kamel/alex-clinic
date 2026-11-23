@@ -44,6 +44,8 @@
     "loggedInAs": "مسجل كـ"
   },
   "frontDesk": {
+    "onlineBooking": "حجز إلكتروني",
+    "dateFull": "اكتمل العدد المتاح لدى الطبيب في هذا التاريخ.",
     "title": "قسم الاستقبال والمواعيد",
     "registerPatientTitle": "تسجيل مريض جديد",
     "searchPatientTitle": "البحث عن مريض",

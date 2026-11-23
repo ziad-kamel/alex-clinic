@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatientDto, UpdatePatientDto } from './dto/patient.dto';
 import { normalizeArabicText } from '@clinic/shared';
+import { normalizePatientName, normalizePatientPhone } from './patient-identity';
 
 @Injectable()
 export class PatientsService {
@@ -81,12 +82,38 @@ export class PatientsService {
   }
 
   async create(dto: CreatePatientDto) {
-    return this.prisma.patient.create({
-      data: {
-        name: dto.name.trim(),
-        phone: dto.phone.trim(),
-        extraPhone: dto.extraPhone ? dto.extraPhone.trim() : null,
-      },
+    const name = dto.name.trim();
+    const phone = dto.phone.trim();
+    const phoneNormalized = normalizePatientPhone(phone);
+    const normalizedName = normalizePatientName(name);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${normalizedName}), hashtext(${phoneNormalized})) IS NOT NULL AS lock_acquired
+      `;
+
+      const candidates = await tx.patient.findMany({
+        where: { phoneNormalized },
+        select: { id: true, name: true },
+      });
+      const matches = candidates.filter(
+        (patient) => normalizePatientName(patient.name) === normalizedName,
+      );
+      if (matches.length > 1) {
+        throw new ConflictException({ code: 'PATIENT_MATCH_REQUIRES_REVIEW' });
+      }
+      if (matches[0]) {
+        return tx.patient.findUniqueOrThrow({ where: { id: matches[0].id } });
+      }
+
+      return tx.patient.create({
+        data: {
+          name,
+          phone,
+          phoneNormalized,
+          extraPhone: dto.extraPhone ? dto.extraPhone.trim() : null,
+        },
+      });
     });
   }
 
@@ -96,7 +123,12 @@ export class PatientsService {
       where: { id },
       data: {
         ...(dto.name ? { name: dto.name.trim() } : {}),
-        ...(dto.phone ? { phone: dto.phone.trim() } : {}),
+        ...(dto.phone
+          ? {
+              phone: dto.phone.trim(),
+              phoneNormalized: normalizePatientPhone(dto.phone),
+            }
+          : {}),
         ...(dto.extraPhone !== undefined ? { extraPhone: dto.extraPhone?.trim() || null } : {}),
       },
     });

@@ -13,6 +13,7 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 - **Cloud (`apps/portal`):**
   - Patient portal on Vercel backed by the isolated `portal` schema in Supabase PostgreSQL.
   - Holds only portal accounts and completed results (zero clinic operational data).
+  - Public appointment booking proxies through signed server-to-server requests to the clinic API; the portal never connects to clinic operational tables.
 
 ---
 
@@ -55,14 +56,14 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 
 ---
 
-## Phase 3 Patient Portal & Sync Status
+## Phase 3 Patient Portal & Sync Status (COMPLETED & VERIFIED)
 
 - [x] Portal login with signed `httpOnly` sessions, account lockout and database-backed IP throttling.
 - [x] Patient-scoped results list/detail, password change, and A4 PDF download with Arabic fonts.
 - [x] HMAC-signed account/result sync, retrying local outbox worker, and admin outbox monitor.
 - [x] Focused tests for signatures, result ownership filters, and worker ordering/retries.
 - [x] Apply the portal schema migration to Supabase; the portal tables and RLS are verified.
-- [ ] Deploy to Vercel and run live sync/login/PDF acceptance checks. See the deployment instructions below.
+- [x] Deploy to Vercel and verify live sync, patient login, password change, results, and PDF acceptance. See the deployment instructions below.
 
 ---
 
@@ -79,7 +80,27 @@ A web system for clinics with multi-specialty doctors, front desk appointment qu
 - [x] **Automated Tests:** Unit tests for `ReportsService` passing with 100% test coverage.
 - [x] **E2E Testing Suite:** Playwright end-to-end specifications covering all clinical workflows (`pnpm test:e2e`).
 
-The implementation must not be considered fully acceptance-tested until the deployment checks are complete.
+## Phase 5 Online Patient Appointment Booking (IN PROGRESS)
+
+- The public portal flow is available at `/book-appointment`. Patients select a specialization, active doctor, available date, and enter their name and phone number.
+- The NestJS API reuses a patient when normalized name and phone match, checks schedule capacity, and assigns the next number through the same locked doctor/date counter as Front Desk bookings. The identity lock is shared with Front Desk registration to prevent duplicate rows during simultaneous requests.
+- Online bookings appear in the authenticated Front Desk daily list with an **Online** source badge, which refreshes every 30 seconds while the page is open.
+- Portal route handlers proxy only the public booking operations. Configure `PUBLIC_BOOKING_API_URL` to an HTTPS-reachable NestJS API base URL ending in `/api` in production. The API remains the only component with access to clinic operational tables.
+- Set the same random secret of at least 32 bytes as `PUBLIC_BOOKING_GATEWAY_SECRET` in the API and Portal server environments. The portal signs each API request; the API rejects missing, altered, or expired signatures. Never expose this value through a `NEXT_PUBLIC_` variable.
+- In local development, `PUBLIC_BOOKING_API_URL` can be `http://localhost:3001/api`. The local portal uses the portal database's existing login-limit table for hashed-IP booking rate limits.
+- A localhost `BOOKING_UNAVAILABLE` HTTP 500 was traced to Prisma failing to deserialize PostgreSQL's `void` advisory-lock result. The shared patient identity lock now returns a boolean, and the focused service tests and API build pass. For example, Omar in General Medicine has no availability on 28 December 2026; choose a date offered by the availability step.
+
+### Applying the Phase 5 API schema
+
+After configuring `apps/api/.env`, push the updated Prisma schema and backfill normalized phone values for existing patients:
+
+```bash
+npm --prefix apps/api run prisma:generate
+npm --prefix apps/api run prisma:push
+npm --prefix apps/api run prisma:phase5-backfill-phone-normalized
+```
+
+The additive schema change adds an indexed `phone_normalized` patient field and the appointment booking source. The backfill stores canonical digits only, not the original phone value. Do not run database schema commands against production without first confirming the target connection.
 
 ---
 
@@ -128,6 +149,8 @@ The portal uses its own Prisma schema and the PostgreSQL `portal` schema; it doe
 - `DIRECT_URL`: Supabase session-pooler URL (port `5432`) for Prisma migrations on this IPv4-only network. Use the connection string from the Supabase Dashboard.
 - `SESSION_SECRET`: a private random secret of at least 32 bytes.
 - `SYNC_SECRET`: the same private random secret configured in `apps/api/.env`.
+- `PUBLIC_BOOKING_API_URL`: the HTTPS API base URL ending in `/api` that the Vercel server uses for booking requests.
+- `PUBLIC_BOOKING_GATEWAY_SECRET`: the same private random secret configured in the API; never expose it to browser code.
 
 The initial portal migration has been applied to the configured Supabase project. The direct database endpoint resolves to IPv6 and was unreachable from this machine, so the existing pooler credentials were used with the IPv4 session-pooler endpoint. The portal schema was confirmed empty before applying its migration; Prisma now reports it up to date, and all three portal tables have RLS enabled. No clinic operational tables or rows were modified.
 
@@ -147,7 +170,7 @@ For this project, the migration is already applied. Keep `DIRECT_URL` configured
    pnpm --filter @clinic/shared run build && pnpm --filter @clinic/portal run build
    ```
    The portal build generates its Prisma client before running `next build`.
-3. Add the portal environment variables in Vercel: `DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`, `SYNC_SECRET`, `NEXT_PUBLIC_CLINIC_NAME`, `CLINIC_TIMEZONE`, and `DEFAULT_LOCALE`. Use the same `SYNC_SECRET` in Vercel and the local API; keep `SESSION_SECRET` private to the portal.
+3. Add the portal environment variables in Vercel: `DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`, `SYNC_SECRET`, `PUBLIC_BOOKING_API_URL`, `PUBLIC_BOOKING_GATEWAY_SECRET`, `NEXT_PUBLIC_CLINIC_NAME`, `CLINIC_TIMEZONE`, and `DEFAULT_LOCALE`. Use the same `SYNC_SECRET` and `PUBLIC_BOOKING_GATEWAY_SECRET` in Vercel and the API; keep `SESSION_SECRET` private to the portal.
 4. The initial migration is already applied to the configured Supabase project. For a new database, apply it with `pnpm --filter @clinic/portal run prisma:deploy` using a reachable migration connection, then deploy the Vercel project.
 5. Configure `PORTAL_SYNC_URL` in `apps/api/.env` to the deployed portal origin. The local API sends signed HTTPS requests to the portal sync routes; if the portal is unavailable, the outbox retains and retries pending events.
 
